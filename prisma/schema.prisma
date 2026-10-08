@@ -1,0 +1,345 @@
+// Prisma Schema for Al-Afhhihram House POS
+// Configured for Pakistan Retail & Wholesale operations (PKR Currency, Khata/Receivables & Vendor Ledgers)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // Set to "postgresql" for cloud server deployment
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USER & ACCESS CONTROL (RBAC)
+// ==========================================
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String?   @unique
+  passwordHash  String
+  fullName      String
+  role          String    @default("CASHIER") // ADMIN, MANAGER, CASHIER
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  shifts        Shift[]
+  sales         SalesTransaction[]
+  expenses      Expense[]
+  stockAudits   StockMovement[]
+
+  @@map("users")
+}
+
+// ==========================================
+// PRODUCT CATALOG & INVENTORY
+// ==========================================
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                  String    @id @default(uuid())
+  sku                 String    @unique
+  barcode             String    @unique
+  name                String
+  description         String?
+  categoryId          String
+  purchasePrice       Float     // Base wholesale cost in PKR
+  sellingPrice        Float     // Retail price in PKR
+  stockQuantity       Int       @default(0)
+  minStockThreshold   Int       @default(5)
+  unit                String    @default("pcs")
+  size                String?
+  color               String?
+  brand               String?
+  imageUrl            String?
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  category            Category  @relation(fields: [categoryId], references: [id])
+  stockMovements      StockMovement[]
+  salesItems          SalesItem[]
+  purchaseOrderItems  PurchaseOrderItem[]
+
+  @@index([barcode])
+  @@index([sku])
+  @@index([categoryId])
+  @@map("products")
+}
+
+// ==========================================
+// STOCK TRACKING & AUDIT LOGS
+// ==========================================
+
+model StockMovement {
+  id            String    @id @default(uuid())
+  productId     String
+  movementType  String    // STOCK_IN_PO, STOCK_OUT_SALE, STOCK_OUT_DAMAGE, STOCK_OUT_RETURN, MANUAL_ADJUSTMENT
+  quantity      Int
+  previousStock Int
+  newStock      Int
+  referenceId   String?
+  referenceType String?   // "SALE", "PURCHASE_ORDER", "MANUAL", "DAMAGE"
+  notes         String?
+  performedById String
+  createdAt     DateTime  @default(now())
+
+  product       Product   @relation(fields: [productId], references: [id])
+  performedBy   User      @relation(fields: [performedById], references: [id])
+
+  @@index([productId])
+  @@index([movementType])
+  @@map("stock_movements")
+}
+
+// ==========================================
+// SUPPLIERS & VENDOR LEDGER (ACCOUNTS PAYABLE)
+// ==========================================
+
+model Supplier {
+  id              String    @id @default(uuid())
+  name            String
+  companyName     String?
+  phone           String?
+  email           String?
+  address         String?
+  currentBalance  Float     @default(0.0) // Positive = Payable amount we owe to vendor (Baqaya)
+  paymentDueDate  DateTime? // Target date to pay supplier
+  paymentTermsDays Int?     @default(0)   // e.g. 7, 15, 30 days
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  purchaseOrders  PurchaseOrder[]
+  ledgerEntries   SupplierLedgerEntry[]
+
+  @@map("suppliers")
+}
+
+model SupplierLedgerEntry {
+  id              String    @id @default(uuid())
+  supplierId      String
+  referenceType   String    // "PURCHASE_BILL", "PAYMENT_MADE", "PURCHASE_RETURN"
+  referenceId     String?   // PO Number or Bill Number
+  debit           Float     @default(0.0) // Payments made to vendor (reduces our liability)
+  credit          Float     @default(0.0) // Purchases/Bills from vendor (increases what we owe)
+  runningBalance  Float
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  supplier        Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@map("supplier_ledger_entries")
+}
+
+// ==========================================
+// CUSTOMERS & KHATA (ACCOUNTS RECEIVABLE / UDHAAR)
+// ==========================================
+
+model Customer {
+  id              String    @id @default(uuid())
+  name            String
+  phone           String?   @unique
+  email           String?
+  address         String?
+  balance         Float     @default(0.0) // Positive = Customer owes us (Udhaar / Receivable)
+  creditLimit     Float     @default(0.0)
+  paymentDueDate  DateTime? // Promise date / Due date to recover balance
+  paymentTermsDays Int?     @default(0)   // Promise days
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sales           SalesTransaction[]
+  ledgerEntries   CustomerLedgerEntry[]
+
+  @@map("customers")
+}
+
+model CustomerLedgerEntry {
+  id              String    @id @default(uuid())
+  customerId      String
+  referenceType   String    // "SALE_INVOICE", "PAYMENT_RECEIVED", "RETURN_CREDIT"
+  referenceId     String?   // Invoice Number or Receipt Voucher
+  debit           Float     @default(0.0) // Credit Sale (Increases what customer owes us)
+  credit          Float     @default(0.0) // Payment Received (Decreases what customer owes)
+  runningBalance  Float
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  customer        Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_ledger_entries")
+}
+
+// ==========================================
+// SHIFTS & Z-REPORTS (DRAWER RECONCILIATION)
+// ==========================================
+
+model Shift {
+  id                  String    @id @default(uuid())
+  cashierId           String
+  shiftNumber         Int?
+  openedAt            DateTime  @default(now())
+  closedAt            DateTime?
+  openingCash         Float     @default(0.0)
+  closingCash         Float?
+  systemExpectedCash  Float?
+  cashDifference      Float?
+  totalSalesAmount    Float     @default(0.0)
+  totalTransactions   Int       @default(0)
+  status              String    @default("OPEN") // OPEN, CLOSED
+  notes               String?
+
+  cashier             User      @relation(fields: [cashierId], references: [id])
+  sales               SalesTransaction[]
+
+  @@index([cashierId])
+  @@index([status])
+  @@map("shifts")
+}
+
+// ==========================================
+// SALES TRANSACTIONS & INVOICES
+// ==========================================
+
+model SalesTransaction {
+  id                  String    @id @default(uuid())
+  invoiceNumber       String    @unique
+  clientTransactionId String?   @unique
+  cashierId           String
+  shiftId             String?
+  customerId          String?
+  customerName        String?   @default("Walk-in Customer")
+  customerPhone       String?
+  subtotal            Float
+  discountType        String?
+  discountValue       Float     @default(0.0)
+  discountAmount      Float     @default(0.0)
+  taxRate             Float     @default(0.0) // Configurable (e.g. 0% or standard Pakistani retail tax)
+  taxAmount           Float     @default(0.0)
+  totalAmount         Float
+  paymentMethod       String    @default("CASH") // CASH, CARD, MOBILE_WALLET, CREDIT, SPLIT
+  amountTendered      Float     @default(0.0)
+  changeDue           Float     @default(0.0)
+  balanceDue          Float     @default(0.0) // Udhaar / Remaining balance on this sale
+  dueDate             DateTime? // Due date for payment of this invoice
+  status              String    @default("COMPLETED") // COMPLETED, REFUNDED, VOID
+  isSynced            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  cashier             User      @relation(fields: [cashierId], references: [id])
+  shift               Shift?    @relation(fields: [shiftId], references: [id])
+  customer            Customer? @relation(fields: [customerId], references: [id])
+  items               SalesItem[]
+
+  @@index([invoiceNumber])
+  @@index([cashierId])
+  @@index([customerId])
+  @@index([createdAt])
+  @@map("sales_transactions")
+}
+
+model SalesItem {
+  id              String            @id @default(uuid())
+  transactionId   String
+  productId       String
+  productName     String
+  sku             String
+  unitPrice       Float
+  costPrice       Float             // Historical cost price for audit COGS calculation
+  quantity        Int
+  discountAmount  Float             @default(0.0)
+  subtotalAmount  Float
+
+  transaction     SalesTransaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product         Product           @relation(fields: [productId], references: [id])
+
+  @@index([transactionId])
+  @@index([productId])
+  @@map("sales_items")
+}
+
+// ==========================================
+// PURCHASE ORDERS & BILLS (RESTOCKING)
+// ==========================================
+
+model PurchaseOrder {
+  id            String              @id @default(uuid())
+  poNumber      String              @unique // e.g. PO-202610-001
+  supplierId    String
+  orderDate     DateTime            @default(now())
+  expectedDate  DateTime?
+  receivedDate  DateTime?
+  totalAmount   Float               @default(0.0)
+  paidAmount    Float               @default(0.0)
+  balanceAmount Float               @default(0.0) // Pending payable to supplier
+  dueDate       DateTime?           // Due date for payment to supplier
+  paymentMethod String              @default("CASH") // CASH, BANK_TRANSFER, CHEQUE, CREDIT
+  status        String              @default("RECEIVED") // ORDERED, RECEIVED, CANCELLED
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  items         PurchaseOrderItem[]
+
+  @@index([supplierId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  productId       String
+  quantityOrdered Int
+  quantityReceived Int          @default(0)
+  unitCost        Float
+  totalCost       Float
+
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product         Product       @relation(fields: [productId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+// ==========================================
+// EXPENSE TRACKING
+// ==========================================
+
+model Expense {
+  id            String    @id @default(uuid())
+  expenseNumber String    @unique
+  category      String    // RENT, UTILITIES, PACKAGING, TRANSPORT, SALARIES, MARKETING, TEA_REFRESHMENT, MISC
+  amount        Float
+  paymentMethod String    @default("CASH")
+  date          DateTime  @default(now())
+  description   String
+  recordedById  String
+  receiptUrl    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  recordedBy    User      @relation(fields: [recordedById], references: [id])
+
+  @@index([category])
+  @@index([date])
+  @@map("expenses")
+}

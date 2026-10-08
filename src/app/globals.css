@@ -1,0 +1,258 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Jameel Noori Nastaleeq';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/jameel-noori-nastaleeq.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/npm/jameel-noori/fonts/jameel-noori-nastaleeq4.woff2') format('woff2'),
+       local('Jameel Noori Nastaleeq'),
+       local('JameelNooriNastaliq');
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+@font-face {
+  font-family: 'Jameel Noori Nastaleeq';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/jameel-noori-nastaleeq.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/npm/jameel-noori/fonts/jameel-noori-nastaleeq4.woff2') format('woff2'),
+       local('Jameel Noori Nastaleeq'),
+       local('JameelNooriNastaliq');
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 142.1 76.2% 36.3%; /* Islamic Emerald Green */
+    --primary-foreground: 355.7 100% 97.3%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142.1 76.2% 36.3%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  body {
+    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", sans-serif;
+  }
+
+  /* Specific Urdu/Arabic Nastaleeq style support */
+  [lang="ur"],
+  .font-urdu,
+  .urdu-text {
+    font-family: "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", "Urdu Typesetting", "Nafees", sans-serif;
+    letter-spacing: normal;
+    line-height: 1.8;
+  }
+}
+
+/* Hide scrollbar utility for clean modern headers and pills */
+@layer utilities {
+  .font-nastaleeq {
+    font-family: "Jameel Noori Nastaleeq", "Noto Nastaliq Urdu", sans-serif;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ==============================================================================
+   PRINT STYLING (THERMAL RECEIPTS, A4 AUDIT REPORTS, BILLS & LEDGERS)
+   ============================================================================== */
+@media print {
+  /* When printing thermal receipts in POS */
+  body:has(#thermal-receipt-area) * {
+    visibility: hidden;
+  }
+  body:has(#thermal-receipt-area) #thermal-receipt-area,
+  body:has(#thermal-receipt-area) #thermal-receipt-area * {
+    visibility: visible;
+  }
+  body:has(#thermal-receipt-area) #thermal-receipt-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    padding: 2mm;
+    background: #fff;
+    color: #000;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  /* When printing Z-Report Modal in POS */
+  body:has(#zreport-printable-area):not(:has(#thermal-receipt-area)) * {
+    visibility: hidden;
+  }
+  body:has(#zreport-printable-area):not(:has(#thermal-receipt-area)) #zreport-printable-area,
+  body:has(#zreport-printable-area):not(:has(#thermal-receipt-area)) #zreport-printable-area * {
+    visibility: visible;
+  }
+  body:has(#zreport-printable-area):not(:has(#thermal-receipt-area)) #zreport-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 80mm;
+    margin: 0 auto;
+    padding: 4mm;
+    background: #fff;
+    color: #000;
+  }
+
+  /* When printing Purchase Order Bill in Inventory */
+  body:has(#purchase-invoice-printable-area) * {
+    visibility: hidden;
+  }
+  body:has(#purchase-invoice-printable-area) #purchase-invoice-printable-area,
+  body:has(#purchase-invoice-printable-area) #purchase-invoice-printable-area * {
+    visibility: visible;
+  }
+  body:has(#purchase-invoice-printable-area) #purchase-invoice-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 8mm;
+    background: #fff;
+    color: #000;
+  }
+
+  /* When printing Barcode labels in Inventory */
+  body:has(#barcode-printable-area) * {
+    visibility: hidden;
+  }
+  body:has(#barcode-printable-area) #barcode-printable-area,
+  body:has(#barcode-printable-area) #barcode-printable-area * {
+    visibility: visible;
+  }
+  body:has(#barcode-printable-area) #barcode-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 4mm;
+    background: #fff;
+  }
+
+  /* When printing Individual Customer Full Audit Report */
+  body:has(#customer-report-printable-area) * {
+    visibility: hidden;
+  }
+  body:has(#customer-report-printable-area) #customer-report-printable-area,
+  body:has(#customer-report-printable-area) #customer-report-printable-area * {
+    visibility: visible;
+  }
+  body:has(#customer-report-printable-area) #customer-report-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 8mm;
+    background: #fff;
+    color: #000;
+  }
+
+  /* When printing Customer Khata Statement */
+  body:has(#customer-khata-printable-area):not(:has(#customer-report-printable-area)) * {
+    visibility: hidden;
+  }
+  body:has(#customer-khata-printable-area):not(:has(#customer-report-printable-area)) #customer-khata-printable-area,
+  body:has(#customer-khata-printable-area):not(:has(#customer-report-printable-area)) #customer-khata-printable-area * {
+    visibility: visible;
+  }
+  body:has(#customer-khata-printable-area):not(:has(#customer-report-printable-area)) #customer-khata-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 8mm;
+    background: #fff;
+    color: #000;
+  }
+
+  /* When printing Supplier Ledger Statement */
+  body:has(#supplier-ledger-printable-area) * {
+    visibility: hidden;
+  }
+  body:has(#supplier-ledger-printable-area) #supplier-ledger-printable-area,
+  body:has(#supplier-ledger-printable-area) #supplier-ledger-printable-area * {
+    visibility: visible;
+  }
+  body:has(#supplier-ledger-printable-area) #supplier-ledger-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 8mm;
+    background: #fff;
+    color: #000;
+  }
+
+  /* When printing Reports Page (Sales, Purchases, Accounting PnL, Expenses, Payables, Receivables, Shifts) */
+  body:has(#report-printable-area) * {
+    visibility: hidden;
+  }
+  body:has(#report-printable-area) #report-printable-area,
+  body:has(#report-printable-area) #report-printable-area * {
+    visibility: visible;
+  }
+  body:has(#report-printable-area) #report-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 6mm;
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Thermal roll formatting */
+  .receipt-width-80mm {
+    width: 72mm;
+    max-width: 72mm;
+  }
+  .receipt-width-58mm {
+    width: 48mm;
+    max-width: 48mm;
+    font-size: 9.5px;
+  }
+
+  @page {
+    margin: 5mm;
+    size: auto;
+  }
+}
