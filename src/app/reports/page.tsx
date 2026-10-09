@@ -42,7 +42,7 @@ export default function ReportsPage() {
   };
 
   // Date range presets
-  const [preset, setPreset] = useState<"today" | "week" | "month" | "custom">("today");
+  const [preset, setPreset] = useState<"today" | "yesterday" | "week" | "month" | "all" | "custom">("today");
   const [startDate, setStartDate] = useState(() => formatLocalDate(new Date()));
   const [endDate, setEndDate] = useState(() => formatLocalDate(new Date()));
 
@@ -72,12 +72,18 @@ export default function ReportsPage() {
   const [isFetchingCustomerStatement, setIsFetchingCustomerStatement] = useState<boolean>(false);
 
   // Apply Presets
-  const applyPreset = (p: "today" | "week" | "month" | "custom") => {
+  const applyPreset = (p: "today" | "yesterday" | "week" | "month" | "all" | "custom") => {
     setPreset(p);
     const today = new Date();
 
     if (p === "today") {
       const d = formatLocalDate(today);
+      setStartDate(d);
+      setEndDate(d);
+    } else if (p === "yesterday") {
+      const yest = new Date(today);
+      yest.setDate(today.getDate() - 1);
+      const d = formatLocalDate(yest);
       setStartDate(d);
       setEndDate(d);
     } else if (p === "week") {
@@ -86,9 +92,13 @@ export default function ReportsPage() {
       setStartDate(formatLocalDate(weekStart));
       setEndDate(formatLocalDate(today));
     } else if (p === "month") {
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthStart = new Date(today);
+      monthStart.setDate(today.getDate() - 30);
       setStartDate(formatLocalDate(monthStart));
       setEndDate(formatLocalDate(today));
+    } else if (p === "all") {
+      setStartDate("");
+      setEndDate("");
     }
   };
 
@@ -361,37 +371,53 @@ export default function ReportsPage() {
 
         {/* Date Filters & Presets (Weekly, Monthly, Custom) */}
         {activeTab !== "shifts" && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
             {/* Quick Presets */}
             <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
               <span className="text-xs text-slate-500 font-semibold mr-1">Period:</span>
               <button
                 onClick={() => applyPreset("today")}
                 className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "today" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
+                  preset === "today" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 Today (آج)
               </button>
               <button
-                onClick={() => applyPreset("week")}
+                onClick={() => applyPreset("yesterday")}
                 className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "week" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
+                  preset === "yesterday" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                Weekly Report (ہفتہ وار)
+                Yesterday (کل)
+              </button>
+              <button
+                onClick={() => applyPreset("week")}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                  preset === "week" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Last 7 Days (ہفتہ وار)
               </button>
               <button
                 onClick={() => applyPreset("month")}
                 className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "month" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"
+                  preset === "month" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
-                Monthly Report (ماہانہ)
+                Last 30 Days (ماہانہ)
+              </button>
+              <button
+                onClick={() => applyPreset("all")}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                  preset === "all" ? "bg-emerald-700 text-white shadow-sm" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+                }`}
+              >
+                All History (تمام تاریخیں)
               </button>
             </div>
 
-            {/* Custom Date Pickers & Supplier Filter */}
+            {/* Custom Date Pickers & Filters */}
             <div className="flex items-center space-x-2 text-xs flex-wrap gap-y-1">
               {activeTab === "sales" && (
                 <div className="flex items-center space-x-1 mr-2">
@@ -429,27 +455,53 @@ export default function ReportsPage() {
                 </div>
               )}
 
-              <Calendar className="w-4 h-4 text-slate-400" />
-              <span>From:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setPreset("custom");
-                  setStartDate(e.target.value);
-                }}
-                className="px-2 py-1 border rounded text-xs bg-slate-50"
-              />
-              <span>To:</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setPreset("custom");
-                  setEndDate(e.target.value);
-                }}
-                className="px-2 py-1 border rounded text-xs bg-slate-50"
-              />
+              <div className="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                <Calendar className="w-4 h-4 text-slate-500" />
+                <span className="text-slate-600 font-semibold">From:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setPreset("custom");
+                    const newStart = e.target.value;
+                    setStartDate(newStart);
+                    if (endDate && newStart > endDate) {
+                      setEndDate(newStart);
+                    }
+                  }}
+                  className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
+                />
+                <span className="text-slate-600 font-semibold">To:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setPreset("custom");
+                    const newEnd = e.target.value;
+                    setEndDate(newEnd);
+                    if (startDate && newEnd < startDate) {
+                      setStartDate(newEnd);
+                    }
+                  }}
+                  className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
+                />
+                <button
+                  onClick={() => loadReportData()}
+                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-sm"
+                >
+                  <Filter className="w-3 h-3 text-emerald-400" />
+                  <span>Filter</span>
+                </button>
+                {(startDate || endDate) && (
+                  <button
+                    onClick={() => applyPreset("all")}
+                    title="Clear date filter to view all records"
+                    className="px-2 py-1 text-slate-500 hover:text-rose-600 transition text-xs font-semibold"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -487,7 +539,7 @@ export default function ReportsPage() {
                 : "Drawer Closing & Shift Z-Reports"}
             </span>
             <div className="text-xs text-slate-500 mt-1">
-              Date Period: <strong>{startDate}</strong> to <strong>{endDate}</strong>
+              Date Period: <strong>{startDate && endDate ? `${startDate} to ${endDate}` : startDate ? `From ${startDate}` : endDate ? `Up to ${endDate}` : "All History (شروع سے اب تک تمام ریکارڈ)"}</strong>
             </div>
             <div className="text-[10px] text-slate-400">
               Printed on: {new Date().toLocaleString()}
