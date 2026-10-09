@@ -5,7 +5,7 @@
   "description": "Production POS and Inventory Management System for Al-Afhhihram House (Web, PWA & Desktop Ready)",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma db push --accept-data-loss && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
