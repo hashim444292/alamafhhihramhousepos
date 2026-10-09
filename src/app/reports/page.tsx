@@ -27,11 +27,21 @@ import {
 } from "lucide-react";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { formatCurrency, formatNumber } from "@/lib/format-utils";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function ReportsPage() {
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<
     "accounting" | "sales" | "purchases" | "expenses" | "customers" | "suppliers" | "shifts"
-  >("accounting");
+  >("sales");
+
+  useEffect(() => {
+    if (user?.role === "ADMIN" || user?.role === "MANAGER") {
+      setActiveTab("accounting");
+    } else {
+      setActiveTab("sales");
+    }
+  }, [user?.role]);
 
   // Helper to format local date YYYY-MM-DD
   const formatLocalDate = (d: Date) => {
@@ -284,17 +294,19 @@ export default function ReportsPage() {
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 print:hidden">
         {/* Module Tabs */}
         <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
-          <button
-            onClick={() => setActiveTab("accounting")}
-            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 transition ${
-              activeTab === "accounting"
-                ? "bg-slate-900 text-white shadow-sm"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-          >
-            <PieChart className="w-4 h-4 text-emerald-400" />
-            <span>General Accounting & P&L (مکمل اکاؤنٹنگ و منافع)</span>
-          </button>
+          {user?.role !== "CASHIER" && (
+            <button
+              onClick={() => setActiveTab("accounting")}
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 transition ${
+                activeTab === "accounting"
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <PieChart className="w-4 h-4 text-emerald-400" />
+              <span>General Accounting & P&L (مکمل اکاؤنٹنگ و منافع)</span>
+            </button>
+          )}
 
           <button
             onClick={() => setActiveTab("sales")}

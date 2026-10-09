@@ -66,6 +66,27 @@ export async function runComprehensiveSeed() {
     },
   });
 
+  // Additional Cashier accounts for instant login compatibility
+  await db.user.create({
+    data: {
+      username: "cashier",
+      email: "cashier@alafhhihram.pk",
+      passwordHash: cashierPass,
+      fullName: "Staff Cashier (کاؤنٹر کیشیئر)",
+      role: "CASHIER",
+    },
+  });
+
+  await db.user.create({
+    data: {
+      username: "cashier1",
+      email: "cashier1@alafhhihram.pk",
+      passwordHash: cashierPass,
+      fullName: "Cashier Terminal 1",
+      role: "CASHIER",
+    },
+  });
+
   // 3. Product Categories
   const catIhram = await db.category.create({
     data: {
