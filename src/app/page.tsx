@@ -1,5 +1,5 @@
-import PosPage from "./pos/page";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <PosPage />;
+  redirect("/login");
 }
