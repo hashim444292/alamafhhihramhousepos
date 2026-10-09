@@ -131,19 +131,19 @@ export const Navbar: React.FC = () => {
         {/* Brand / Logo */}
         <div className="flex items-center shrink-0">
           <Link href="/pos" className="group flex items-center space-x-2.5 transition">
-            <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 font-black text-white shadow-sm ring-1 ring-emerald-400/30 group-hover:scale-105 transition-transform duration-150">
-              <span className="text-xs sm:text-sm tracking-tighter">AH</span>
-              <span className="absolute -bottom-0.5 -right-0.5 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
+            <div className="flex h-9 items-center justify-center rounded-lg bg-white/10 px-1 py-0.5 shadow-sm ring-1 ring-emerald-500/30 group-hover:bg-white/20 transition duration-150">
+              <img
+                src="/logo.png"
+                alt="AL-AMAFHH IHRAM HOUSE"
+                className="h-7 w-auto object-contain shrink-0"
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs sm:text-sm font-bold tracking-tight text-white group-hover:text-emerald-300 transition-colors leading-tight whitespace-nowrap">
-                Al-Afhhihram House
+              <span className="text-xs sm:text-sm font-extrabold tracking-tight text-white group-hover:text-emerald-300 transition-colors leading-tight whitespace-nowrap">
+                AL-AMAFHH IHRAM HOUSE
               </span>
               <span className="text-[10px] font-medium text-emerald-400/90 tracking-normal hidden xl:block leading-none">
-                Ihram & Islamic Clothing POS
+                Ihram Sets & Islamic Accessories POS
               </span>
             </div>
           </Link>

@@ -104,6 +104,13 @@
     font-size: 11px;
     line-height: 1.25;
   }
+  body:has(#thermal-receipt-area) #thermal-receipt-area img {
+    display: block !important;
+    margin: 0 auto 4px auto !important;
+    max-height: 55px !important;
+    width: auto !important;
+    filter: grayscale(100%) contrast(150%) !important;
+  }
 
   /* When printing Z-Report Modal in POS */
   body:has(#zreport-printable-area):not(:has(#thermal-receipt-area)) * {

@@ -10,6 +10,7 @@ export interface ReceiptData {
   storeTagline?: string;
   address?: string;
   phone?: string;
+  email?: string;
   taxNumber?: string;
   invoiceNumber: string;
   cashierName: string;
@@ -127,13 +128,14 @@ export class EscPosBuilder {
     if (data.storeTagline) p.textLine(data.storeTagline);
     if (data.address) p.textLine(data.address);
     if (data.phone) p.textLine(`Tel: ${data.phone}`);
-    if (data.taxNumber) p.textLine(`VAT Reg: ${data.taxNumber}`);
+    if (data.email) p.textLine(data.email);
+    if (data.taxNumber) p.textLine(`STRN/NTN: ${data.taxNumber}`);
     p.divider("=");
 
     // Invoice Meta
     p.alignLeft();
     p.row("Invoice:", data.invoiceNumber);
-    p.row("Date:", data.date.toLocaleString("en-GB"));
+    p.row("Date:", data.date.toLocaleString("en-PK"));
     p.row("Cashier:", data.cashierName);
     if (data.customerName) p.row("Customer:", data.customerName);
     p.divider("-");
@@ -159,12 +161,14 @@ export class EscPosBuilder {
     if (data.discount > 0) {
       p.row("Discount:", `-${data.discount.toFixed(2)}`);
     }
-    p.row("VAT (15%):", data.tax.toFixed(2));
+    if (data.tax > 0) {
+      p.row("SST/Tax:", data.tax.toFixed(2));
+    }
     p.divider("=");
 
     // Grand Total
     p.bold(true).doubleSize(true);
-    p.row("TOTAL (SAR):", data.total.toFixed(2));
+    p.row("TOTAL (PKR):", `Rs. ${data.total.toFixed(2)}`);
     p.doubleSize(false).bold(false);
 
     p.divider("-");

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Printer, X } from "lucide-react";
-import { formatCurrency, formatNumber } from "@/lib/format-utils";
+import { formatCurrency, formatNumber, formatReceiptDate } from "@/lib/format-utils";
 
 export interface ReceiptItem {
   name: string;
@@ -30,6 +30,8 @@ export interface ReceiptProps {
   changeDue: number;
   balanceDue?: number;
   width?: "80mm" | "58mm";
+  tokenNumber?: string | number;
+  refNo?: string;
   onClose?: () => void;
 }
 
@@ -50,15 +52,25 @@ export const ThermalReceipt: React.FC<ReceiptProps> = ({
   changeDue,
   balanceDue = 0.0,
   width = "80mm",
+  tokenNumber,
+  refNo,
   onClose,
 }) => {
-  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || "Al-Afhhihram House";
-  const storeAddress = process.env.NEXT_PUBLIC_STORE_ADDRESS || "Shop #12, Madinah Market, Urdu Bazar, Lahore";
-  const storePhone = process.env.NEXT_PUBLIC_STORE_PHONE || "+92 300 1234567";
-  const storeTaxNo = process.env.NEXT_PUBLIC_STORE_TAX_NUMBER || "STRN-12345678-9";
-  const currency = "Rs.";
+  const storeName = process.env.NEXT_PUBLIC_STORE_NAME || "AL-AMAFHH IHRAM HOUSE";
+  const storeAddress =
+    process.env.NEXT_PUBLIC_STORE_ADDRESS ||
+    "Shop #2 Plot #C22 Gulistan-e-juhar Block 9 pakistan homes near pak ideal society. 75290";
+  const storePhone = process.env.NEXT_PUBLIC_STORE_PHONE || "0313 8230045, 0311 2983178, 0346 2769171";
+  const storeEmail = process.env.NEXT_PUBLIC_STORE_EMAIL || "info@alamafhhihramhouse.com";
+  const storeTaxNo = process.env.NEXT_PUBLIC_STORE_TAX_NUMBER || "SNTN# 9602690";
 
   const is58mm = width === "58mm";
+
+  // Derive display token and invoice number
+  const invoiceShort = invoiceNumber.includes("-")
+    ? invoiceNumber.split("-").pop()
+    : invoiceNumber;
+  const tokenDisplay = tokenNumber || (invoiceShort ? `C${invoiceShort}` : "C01-01");
 
   const handlePrint = () => {
     window.print();
@@ -76,7 +88,7 @@ export const ThermalReceipt: React.FC<ReceiptProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={handlePrint}
-              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition flex items-center space-x-1"
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-sm"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Receipt</span>
@@ -96,128 +108,172 @@ export const ThermalReceipt: React.FC<ReceiptProps> = ({
         <div className="p-6 overflow-y-auto flex justify-center bg-slate-100 flex-1">
           <div
             id="thermal-receipt-area"
-            className={`bg-white p-4 shadow-sm font-mono text-slate-900 text-xs ${
+            className={`bg-white p-4 shadow-sm font-mono text-slate-900 text-xs leading-normal ${
               is58mm ? "receipt-width-58mm" : "receipt-width-80mm"
             }`}
           >
-            {/* Header */}
-            <div className="text-center border-b border-dashed border-slate-400 pb-2 mb-2">
-              <div className="font-bold text-sm sm:text-base tracking-wider uppercase">
-                {storeName}
-              </div>
-              <div className="text-[10px] text-slate-600 leading-tight">
-                Ihram Sets & Islamic Wear (احرام و اسلامی ملبوسات)
-              </div>
-              <div className="text-[10px] text-slate-600">{storeAddress}</div>
-              <div className="text-[10px] text-slate-600">Tel: {storePhone}</div>
-              <div className="text-[10px] font-semibold mt-0.5">
-                NTN/STRN: {storeTaxNo}
-              </div>
+            {/* Logo */}
+            <div className="text-center mb-1">
+              <img
+                src="/logo.png"
+                alt="AL-AMAFHH IHRAM HOUSE"
+                className="h-16 max-w-[210px] mx-auto object-contain mb-1 filter grayscale contrast-125"
+              />
             </div>
 
-            {/* Invoice Meta */}
-            <div className="text-[11px] mb-2 border-b border-dashed border-slate-400 pb-2 space-y-0.5">
-              <div className="flex justify-between">
-                <span>Invoice #:</span>
-                <span className="font-bold">{invoiceNumber}</span>
+            {/* Store Information */}
+            <div className="text-center pb-2 mb-1.5 space-y-0.5">
+              <div className="font-black text-sm sm:text-base tracking-wider uppercase text-slate-900 leading-tight">
+                {storeName}
               </div>
-              <div className="flex justify-between">
-                <span>Date:</span>
-                <span>{new Date(date).toLocaleString()}</span>
+              <div className="text-[10px] text-slate-700 leading-tight px-1 font-sans">
+                {storeAddress}
               </div>
-              <div className="flex justify-between">
-                <span>Cashier:</span>
-                <span>{cashierName}</span>
+              <div className="text-[10px] text-slate-700 font-semibold font-sans">
+                Call: {storePhone}
               </div>
-              {customerName && (
-                <div className="flex justify-between">
-                  <span>Customer:</span>
-                  <span className="font-bold">{customerName}</span>
+              {storeEmail && (
+                <div className="text-[10px] text-slate-700 font-sans">
+                  {storeEmail}
+                </div>
+              )}
+              {storeTaxNo && (
+                <div className="text-[10px] font-bold text-slate-800 tracking-wide mt-0.5">
+                  {storeTaxNo}
                 </div>
               )}
             </div>
 
-            {/* Line Items */}
-            <div className="mb-2 border-b border-dashed border-slate-400 pb-2">
-              <div className="flex justify-between font-bold border-b border-slate-200 pb-1 mb-1 text-[11px]">
-                <span>Description</span>
-                <span>Total</span>
+            {/* Token & Invoice Header (Exact layout matching sample receipt) */}
+            <div className="border-t border-dashed border-slate-700 pt-1.5 pb-1">
+              <div className="flex justify-between items-center text-[11px] font-bold tracking-tight text-slate-900">
+                <span>TOKEN NO - {tokenDisplay}</span>
+                <span>INVOICE NO- {invoiceShort}</span>
+              </div>
+              <div className="text-[10px] text-slate-700 font-medium">Takeaway - Takeaway</div>
+              <div className="text-[10px] text-slate-800 font-semibold">Customer Copy</div>
+            </div>
+
+            {/* Reference, Date & Staff */}
+            <div className="border-t border-dashed border-slate-700 pt-1.5 pb-1 text-[11px] space-y-0.5 text-slate-900">
+              <div className="flex justify-between">
+                <span>Ref No :</span>
+                <span>{refNo || invoiceNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Date:</span>
+                <span>{formatReceiptDate(date)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Waiter / Cashier Name:</span>
+                <span className="font-semibold">{cashierName}</span>
+              </div>
+              {customerName && (
+                <div className="flex justify-between">
+                  <span>Customer:</span>
+                  <span className="font-semibold">
+                    {customerName} {customerPhone ? `(${customerPhone})` : ""}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Payment Type Header (Prominent Bold from sample) */}
+            <div className="my-1.5 text-sm sm:text-base font-extrabold uppercase text-slate-950 tracking-wide">
+              Payment Type - {paymentMethod}
+            </div>
+
+            {/* Line Items Table */}
+            <div className="mb-1.5">
+              <div className="border-y border-dashed border-slate-700 py-1 my-1">
+                <div className="flex justify-between font-bold text-[11px] text-slate-900">
+                  <span className="w-8 text-left">Qty</span>
+                  <span className="flex-1 text-left px-1">Item</span>
+                  <span className="w-16 text-right">T.Price</span>
+                </div>
               </div>
               <div className="space-y-1.5 text-[11px]">
                 {items.map((item, idx) => (
-                  <div key={idx} className="flex flex-col">
-                    <span className="font-medium text-slate-900 leading-tight">
-                      {item.name}
+                  <div key={idx} className="flex justify-between items-start leading-tight">
+                    <span className="w-8 text-left font-medium text-slate-900">
+                      {item.quantity}
                     </span>
-                    <div className="flex justify-between text-slate-600 text-[10px]">
-                      <span>
-                        {item.quantity} x {formatCurrency(item.unitPrice)}
-                        {item.discountAmount ? ` (-${formatCurrency(item.discountAmount)})` : ""}
-                      </span>
-                      <span className="font-semibold text-slate-900">
-                        {formatCurrency(item.subtotal)}
-                      </span>
-                    </div>
+                    <span className="flex-1 text-left px-1 font-semibold text-slate-900">
+                      {item.name}
+                      {item.quantity > 1 && (
+                        <span className="block text-[9.5px] text-slate-500 font-normal">
+                          @ {formatCurrency(item.unitPrice)}
+                        </span>
+                      )}
+                      {item.discountAmount ? (
+                        <span className="block text-[9.5px] text-rose-600 font-normal">
+                          Disc: -{formatCurrency(item.discountAmount)}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="w-16 text-right font-bold text-slate-900">
+                      {formatNumber(item.subtotal)}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Financial Breakdown */}
-            <div className="space-y-1 text-[11px] border-b border-dashed border-slate-400 pb-2">
+            {/* Financial Breakdown (Exact layout matching sample) */}
+            <div className="border-t border-dashed border-slate-700 pt-1.5 pb-1 space-y-0.5 text-[11px] text-slate-900">
               <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span>Total</span>
+                <span className="font-semibold">{formatNumber(subtotal)}</span>
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-rose-600">
-                  <span>Discount:</span>
-                  <span>-{formatCurrency(discountAmount)}</span>
+                  <span>Discount</span>
+                  <span>-{formatNumber(discountAmount)}</span>
                 </div>
               )}
-              {taxAmount > 0 && (
+              {taxRate > 0 || taxAmount > 0 ? (
                 <div className="flex justify-between">
-                  <span>Tax:</span>
-                  <span>{formatCurrency(taxAmount)}</span>
+                  <span>SST({taxRate || 0}%)</span>
+                  <span>{formatNumber(taxAmount)}</span>
                 </div>
-              )}
-              <div className="flex justify-between font-bold text-sm border-t border-slate-300 pt-1 mt-1">
-                <span>NET TOTAL:</span>
-                <span>{formatCurrency(totalAmount)}</span>
+              ) : null}
+              <div className="border-t border-dashed border-slate-400 my-1"></div>
+              <div className="flex justify-between font-extrabold text-[13px] text-slate-950">
+                <span>Grand Total</span>
+                <span>{formatNumber(totalAmount)}</span>
               </div>
-            </div>
-
-            {/* Payment Details */}
-            <div className="py-2 text-[10px] space-y-0.5 border-b border-dashed border-slate-400 mb-2">
-              <div className="flex justify-between">
-                <span>Payment Mode:</span>
-                <span className="font-semibold">{paymentMethod}</span>
+              <div className="flex justify-between font-semibold">
+                <span>Paid Amount</span>
+                <span>{formatNumber(amountTendered || totalAmount)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Paid Amount:</span>
-                <span>{formatCurrency(amountTendered)}</span>
+              <div className="flex justify-between font-semibold">
+                <span>Return Amount</span>
+                <span>{formatNumber(changeDue || 0)}</span>
               </div>
-              {changeDue > 0 && (
-                <div className="flex justify-between font-semibold">
-                  <span>Change Return (بقایا):</span>
-                  <span>{formatCurrency(changeDue)}</span>
-                </div>
-              )}
               {balanceDue > 0 && (
-                <div className="flex justify-between font-bold text-rose-600">
-                  <span>Udhaar to Khata (ادھار):</span>
-                  <span>{formatCurrency(balanceDue)}</span>
+                <div className="flex justify-between font-bold text-rose-600 border-t border-dotted border-rose-400 pt-0.5 mt-0.5">
+                  <span>Balance Due (ادھار):</span>
+                  <span>{formatNumber(balanceDue)}</span>
                 </div>
               )}
             </div>
 
-            {/* Footer Blessing */}
-            <div className="text-center text-[10px] space-y-1 pt-1 text-slate-600">
-              <div className="font-bold text-slate-900">جزاكم الله خيراً</div>
-              <div>May Allah accept your Umrah & Hajj pilgrimage</div>
-              <div className="text-[9px]">Exchange possible within 7 days with original invoice</div>
-              <div className="font-mono text-[9px] text-slate-400 mt-2">
-                * * * Thank You for Shopping * * *
+            {/* Footer Matching Photo */}
+            <div className="border-t border-dashed border-slate-700 pt-2 text-center text-[10px] space-y-1 text-slate-700">
+              <div className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                Thanks
+              </div>
+              <div className="font-bold text-slate-900 text-[11px]">
+                جزاكم الله خيراً
+              </div>
+              <div className="text-[10px]">
+                Bill Prepared By: Cashier {cashierName}
+              </div>
+              <div className="text-[9px] text-slate-500 font-semibold">
+                Powered By Al-Amafhh POS
+              </div>
+              <div className="text-[9.5px] font-mono text-slate-500">
+                Print Time: {formatReceiptDate(new Date())}
               </div>
             </div>
           </div>
@@ -226,3 +282,4 @@ export const ThermalReceipt: React.FC<ReceiptProps> = ({
     </div>
   );
 };
+

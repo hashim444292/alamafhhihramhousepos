@@ -127,11 +127,15 @@ export default function LoginPage() {
       <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-7 sm:p-8 space-y-5 border border-slate-100">
         {/* Brand Header */}
         <div className="text-center space-y-1">
-          <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center font-black text-2xl text-white mx-auto shadow-md">
-            AH
+          <div className="flex items-center justify-center mx-auto mb-2">
+            <img
+              src="/logo.png"
+              alt="AL-AMAFHH IHRAM HOUSE"
+              className="h-16 w-auto object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight pt-2">
-            Al-Afhhihram House
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            AL-AMAFHH IHRAM HOUSE
           </h1>
           <p className="text-xs text-slate-500 font-medium">
             POS & Retail Inventory Control System (الافیہ احرام ہاؤس)

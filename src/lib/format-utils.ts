@@ -22,3 +22,26 @@ export function formatNumber(value: number | string | null | undefined): string 
 export function formatCurrency(value: number | string | null | undefined, prefix = "Rs. "): string {
   return `${prefix}${formatNumber(value)}`;
 }
+
+export function formatReceiptDate(value: string | Date | number | null | undefined): string {
+  if (!value) {
+    return new Date().toLocaleString("en-US", {
+      month: "long",
+      day: "2-digit",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  return d.toLocaleString("en-US", {
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
