@@ -139,6 +139,7 @@ export default function ExpensesPage() {
                 <option value="TRANSPORT">Logistics & Transportation</option>
                 <option value="SALARIES">Staff Wages</option>
                 <option value="MARKETING">Marketing & Signage</option>
+                <option value="TEA_REFRESHMENT">Tea & Refreshment (چائے پانی و مہمان نوازی)</option>
                 <option value="MISC">Miscellaneous Supplies</option>
               </select>
             </div>

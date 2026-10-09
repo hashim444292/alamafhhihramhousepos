@@ -8,6 +8,7 @@ export const ExpenseSchema = z.object({
     "TRANSPORT",
     "SALARIES",
     "MARKETING",
+    "TEA_REFRESHMENT",
     "MISC",
   ]),
   amount: z.number().positive("Amount must be greater than zero"),
