@@ -143,11 +143,11 @@ export const Navbar: React.FC = () => {
         {/* Brand / Logo */}
         <div className="flex items-center shrink-0">
           <Link href="/pos" className="group flex items-center space-x-2.5 transition">
-            <div className="flex h-9 items-center justify-center rounded-lg bg-white/10 px-1 py-0.5 shadow-sm ring-1 ring-emerald-500/30 group-hover:bg-white/20 transition duration-150">
+            <div className="flex h-10 items-center justify-center rounded-xl bg-white px-2.5 py-1 shadow-md border border-slate-200 group-hover:bg-slate-50 transition duration-150 shrink-0">
               <img
                 src="/logo.png"
                 alt="AL-AMAFHH IHRAM HOUSE"
-                className="h-7 w-auto object-contain shrink-0"
+                className="h-8 w-auto object-contain shrink-0"
               />
             </div>
             <div className="flex flex-col">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ProductGrid } from "@/components/pos/ProductGrid";
 import { CartPane } from "@/components/pos/CartPane";
 import { PaymentModal } from "@/components/pos/PaymentModal";
@@ -26,6 +26,130 @@ export default function PosPage() {
   const [isShiftOpen, setIsShiftOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<any | null>(null);
+
+  // Photoshop-Style Resizable & Lockable Workspace Panels State
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [leftWidth, setLeftWidth] = useState<number>(58); // default ~58% left, 42% right
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isDesktop, setIsDesktop] = useState<boolean>(false);
+
+  // Safe Hydration-safe localStorage persistence (Versioned key: alamafh_pos_panel_layout_v1)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("alamafh_pos_panel_layout_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.leftWidth === "number" && !isNaN(parsed.leftWidth)) {
+          setLeftWidth(Math.min(72, Math.max(28, parsed.leftWidth)));
+        }
+        if (typeof parsed.isLocked === "boolean") {
+          setIsLocked(parsed.isLocked);
+        }
+      }
+    } catch {
+      // Graceful fallback for storage quotas or private browsing
+    }
+  }, []);
+
+  // Monitor breakpoint (only enable side-by-side resizing on desktop lg screens >= 1024px)
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    checkDesktop();
+    window.addEventListener("resize", checkDesktop);
+    return () => window.removeEventListener("resize", checkDesktop);
+  }, []);
+
+  const savePanelPreferences = (width: number, locked: boolean) => {
+    try {
+      localStorage.setItem(
+        "alamafh_pos_panel_layout_v1",
+        JSON.stringify({ leftWidth: width, isLocked: locked })
+      );
+    } catch {
+      // safe fallback
+    }
+  };
+
+  const handleToggleLock = () => {
+    const nextLocked = !isLocked;
+    setIsLocked(nextLocked);
+    savePanelPreferences(leftWidth, nextLocked);
+  };
+
+  const handleDoubleClickDivider = () => {
+    if (isLocked) return;
+    setLeftWidth(58);
+    savePanelPreferences(58, isLocked);
+  };
+
+  const handlePointerDownDivider = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isLocked || !isDesktop) return;
+    e.preventDefault();
+    const divider = e.currentTarget;
+    try {
+      divider.setPointerCapture(e.pointerId);
+    } catch {}
+    setIsDragging(true);
+
+    const onPointerMove = (moveEv: PointerEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const clientX = moveEv.clientX;
+      const newPercent = ((clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.min(72, Math.max(28, Math.round(newPercent * 10) / 10));
+      setLeftWidth(clamped);
+    };
+
+    const onPointerUp = (upEv: PointerEvent) => {
+      try {
+        divider.releasePointerCapture(upEv.pointerId);
+      } catch {}
+      setIsDragging(false);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width > 0) {
+          const finalPercent = ((upEv.clientX - rect.left) / rect.width) * 100;
+          const clamped = Math.min(72, Math.max(28, Math.round(finalPercent * 10) / 10));
+          savePanelPreferences(clamped, isLocked);
+        }
+      }
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  };
+
+  const handleKeyDownDivider = (e: React.KeyboardEvent) => {
+    if (isLocked) return;
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setLeftWidth((w) => {
+        const next = Math.max(28, Math.round((w - 1) * 10) / 10);
+        savePanelPreferences(next, isLocked);
+        return next;
+      });
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setLeftWidth((w) => {
+        const next = Math.min(72, Math.round((w + 1) * 10) / 10);
+        savePanelPreferences(next, isLocked);
+        return next;
+      });
+    } else if (e.key === "Home" || e.key === "Enter") {
+      e.preventDefault();
+      setLeftWidth(58);
+      savePanelPreferences(58, isLocked);
+    }
+  };
 
   // Fetch products and active shift
   useEffect(() => {
@@ -106,13 +230,27 @@ export default function PosPage() {
               کوئی کیشئر شفٹ اوپن نہیں ہے۔ برائے مہربانی سیلز شروع کرنے سے پہلے شفٹ اوپن کریں۔
             </span>
           </div>
-          <button
-            onClick={() => setIsShiftOpen(true)}
-            className="bg-slate-950 text-white hover:bg-slate-900 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>Open Shift (شفٹ اوپن کریں)</span>
-          </button>
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleLock}
+              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 border shadow-xs ${
+                isLocked
+                  ? "bg-slate-900/90 text-amber-200 border-amber-900/40 hover:bg-slate-900"
+                  : "bg-amber-400 text-slate-950 border-amber-500 hover:bg-amber-300"
+              }`}
+              title={isLocked ? "Panels Locked (Click to enable resizing)" : "Panels Resizable (Click to lock)"}
+            >
+              <span>{isLocked ? "🔒 Panels Locked" : "🔓 Resize Panels"}</span>
+            </button>
+            <button
+              onClick={() => setIsShiftOpen(true)}
+              className="bg-slate-950 text-white hover:bg-slate-900 px-3 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Open Shift (شفٹ اوپن کریں)</span>
+            </button>
+          </div>
         </div>
       ) : (
         <div className="bg-slate-900 text-white px-3 sm:px-4 py-1 text-xs font-medium flex items-center justify-between border-b border-slate-800 shadow-xs">
@@ -128,20 +266,45 @@ export default function PosPage() {
               Started: {new Date(activeShift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
-          <button
-            onClick={() => setIsShiftOpen(true)}
-            className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
-          >
-            <Clock className="w-3 h-3" />
-            <span>Close Shift / کلوزنگ رجسٹر (Z-Report)</span>
-          </button>
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleLock}
+              className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 border shadow-xs ${
+                isLocked
+                  ? "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white"
+                  : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-emerald-900/40"
+              }`}
+              title={isLocked ? "Panels Locked (Click to enable resizing)" : "Panels Resizable (Click to lock)"}
+            >
+              <span>{isLocked ? "🔒 Panels Locked" : "🔓 Resize Panels"}</span>
+            </button>
+            <button
+              onClick={() => setIsShiftOpen(true)}
+              className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
+            >
+              <Clock className="w-3 h-3" />
+              <span>Close Shift / کلوزنگ رجسٹر (Z-Report)</span>
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Main Two-Pane POS Register Layout */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Left Pane: Product Catalog Grid & Search (65% width) */}
-        <div className="flex-1 lg:w-7/12 xl:w-8/12 h-full overflow-hidden">
+      {/* Main Two-Pane POS Register Layout with Photoshop-style Resizable Panels */}
+      <div
+        ref={containerRef}
+        className={`flex-1 flex flex-col lg:flex-row overflow-hidden relative ${
+          isDragging ? "select-none cursor-col-resize" : ""
+        }`}
+      >
+        {/* Left Pane: Product Catalog Grid & Search */}
+        <div
+          className="w-full lg:h-full overflow-hidden min-w-0"
+          style={{
+            width: isDesktop ? `${leftWidth}%` : "100%",
+            flexShrink: 0,
+          }}
+        >
           <ProductGrid
             products={products}
             categories={categories}
@@ -150,8 +313,65 @@ export default function PosPage() {
           />
         </div>
 
-        {/* Right Pane: Cart & Checkout Summary (35% width) */}
-        <div className="w-full lg:w-5/12 xl:w-4/12 h-full border-t lg:border-t-0 lg:border-l border-slate-200 shadow-xl overflow-hidden">
+        {/* Photoshop-Style Resizable Divider Bar (Desktop lg+ only) */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={Math.round(leftWidth)}
+          aria-valuemin={28}
+          aria-valuemax={72}
+          aria-label="Resize panels divider"
+          tabIndex={isLocked ? -1 : 0}
+          onPointerDown={handlePointerDownDivider}
+          onDoubleClick={handleDoubleClickDivider}
+          onKeyDown={handleKeyDownDivider}
+          className={`hidden lg:flex flex-col items-center justify-center relative z-20 shrink-0 select-none transition-colors duration-150 ${
+            isLocked
+              ? "w-2.5 bg-slate-200 border-x border-slate-300 cursor-default"
+              : isDragging
+              ? "w-2.5 bg-emerald-600 border-x border-emerald-700 cursor-col-resize shadow-md"
+              : "w-2.5 bg-slate-200 hover:bg-emerald-500/80 active:bg-emerald-600 border-x border-slate-300 hover:border-emerald-500 cursor-col-resize group"
+          }`}
+          title={
+            isLocked
+              ? "🔒 Panels Locked (Click '🔒 Panels Locked' at top to unlock)"
+              : `↔ Drag to resize (${Math.round(leftWidth)}% / ${Math.round(100 - leftWidth)}%) · Double-click to reset (58%)`
+          }
+        >
+          {/* Grab handle indicator dots */}
+          <div className="flex flex-col items-center justify-center space-y-1 py-3 pointer-events-none">
+            {isLocked ? (
+              <span className="text-[10px] text-slate-500">🔒</span>
+            ) : (
+              <>
+                <div
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDragging ? "bg-white" : "bg-slate-400 group-hover:bg-white"
+                  }`}
+                />
+                <div
+                  className={`w-1 h-3.5 rounded-full transition-colors ${
+                    isDragging ? "bg-white" : "bg-slate-400 group-hover:bg-white"
+                  }`}
+                />
+                <div
+                  className={`w-1 h-1 rounded-full transition-colors ${
+                    isDragging ? "bg-white" : "bg-slate-400 group-hover:bg-white"
+                  }`}
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Right Pane: Cart & Checkout Summary */}
+        <div
+          className="w-full lg:h-full border-t lg:border-t-0 border-slate-200 shadow-xl overflow-hidden min-w-0"
+          style={{
+            width: isDesktop ? `${100 - leftWidth}%` : "100%",
+            flexShrink: 0,
+          }}
+        >
           <CartPane
             onPayClick={(method) => handleOpenPaymentWithMethod(method || "CASH")}
             onKhataClick={() => handleOpenPaymentWithMethod("CREDIT")}

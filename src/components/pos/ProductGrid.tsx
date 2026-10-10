@@ -167,7 +167,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             <p className="text-sm">No products found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2.5 sm:gap-3">
             {filteredProducts.map((p) => {
               const isOut = p.stockQuantity <= 0;
               const isLow = p.stockQuantity > 0 && p.stockQuantity <= p.minStockThreshold;
