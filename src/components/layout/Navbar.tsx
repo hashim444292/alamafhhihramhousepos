@@ -24,6 +24,7 @@ import {
   X,
   AlertTriangle,
 } from "lucide-react";
+import { ShiftModal } from "@/components/pos/ShiftModal";
 
 export const Navbar: React.FC = () => {
   const pathname = usePathname();
@@ -36,10 +37,12 @@ export const Navbar: React.FC = () => {
     clearOfflineQueue,
     receiptWidth,
     setReceiptWidth,
+    activeShift,
   } = usePosStore();
 
   const [syncing, setSyncing] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [isLogoutShiftModalOpen, setIsLogoutShiftModalOpen] = useState(false);
   const [alertData, setAlertData] = useState<{
     totalAlertsCount: number;
     overdueSuppliers: any[];
@@ -113,7 +116,7 @@ export const Navbar: React.FC = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const proceedWithLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (e) {
@@ -121,6 +124,15 @@ export const Navbar: React.FC = () => {
     }
     logout();
     router.push("/login");
+  };
+
+  const handleLogout = async () => {
+    if (activeShift) {
+      alert("⚠️ آپ کی کیشئر شفٹ ابھی اوپن ہے! لاگ آؤٹ کرنے سے پہلے کیش کاؤنٹ کر کے شفٹ کلوز (Z-Report) کرنا لازمی ہے۔ (Active shift must be closed before logging out)");
+      setIsLogoutShiftModalOpen(true);
+      return;
+    }
+    await proceedWithLogout();
   };
 
   const isPosPage = pathname === "/pos";
@@ -459,6 +471,15 @@ export const Navbar: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Mandatory Shift Close Modal on Logout */}
+      <ShiftModal
+        isOpen={isLogoutShiftModalOpen}
+        required={true}
+        isLogoutFlow={true}
+        onSuccessClose={proceedWithLogout}
+        onClose={() => setIsLogoutShiftModalOpen(false)}
+      />
     </header>
   );
 };

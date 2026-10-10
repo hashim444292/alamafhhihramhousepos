@@ -54,16 +54,36 @@ export class SalesService {
         balanceDue = Math.max(0, input.totalAmount - input.amountTendered);
       }
 
-      // 4. Generate invoice number
+      // 4. Validate that an active shift is open for this cashier
+      let resolvedShiftId = input.shiftId;
+      if (!resolvedShiftId) {
+        const activeShift = await tx.shift.findFirst({
+          where: { cashierId, status: "OPEN" },
+          orderBy: { openedAt: "desc" },
+        });
+        if (!activeShift) {
+          throw new Error("کوئی کیشئر شفٹ اوپن نہیں ہے۔ برائے مہربانی سیلز شروع کرنے سے پہلے شفٹ اوپن کریں۔ (Active cashier shift required before processing sales.)");
+        }
+        resolvedShiftId = activeShift.id;
+      } else {
+        const verifyShift = await tx.shift.findUnique({
+          where: { id: resolvedShiftId },
+        });
+        if (!verifyShift || verifyShift.status !== "OPEN") {
+          throw new Error("یہ شفٹ کلوز ہو چکی ہے۔ برائے مہربانی نئی شفٹ اوپن کریں۔ (This shift is closed. Please open a new shift.)");
+        }
+      }
+
+      // 5. Generate invoice number
       const invoiceNumber = await this.generateInvoiceNumber();
 
-      // 5. Create sales transaction
+      // 6. Create sales transaction
       const transaction = await tx.salesTransaction.create({
         data: {
           invoiceNumber,
           clientTransactionId: input.clientTransactionId,
           cashierId,
-          shiftId: input.shiftId,
+          shiftId: resolvedShiftId,
           customerId: input.customerId || null,
           customerName: input.customerName || "Walk-in Customer",
           customerPhone: input.customerPhone,

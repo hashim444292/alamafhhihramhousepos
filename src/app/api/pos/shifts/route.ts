@@ -12,8 +12,16 @@ export async function GET(req: NextRequest) {
     const isHistory = searchParams.get("history") === "true";
 
     if (isHistory) {
-      const shifts = await ShiftService.getAllShifts();
-      return NextResponse.json({ success: true, shifts });
+      const startDate = searchParams.get("startDate") || undefined;
+      const endDate = searchParams.get("endDate") || undefined;
+      const cashierId = searchParams.get("cashierId") || undefined;
+      const result = await ShiftService.getAllShifts({ startDate, endDate, cashierId });
+      return NextResponse.json({
+        success: true,
+        shifts: result.shifts,
+        summary: result.summary,
+        cashiers: result.cashiers,
+      });
     }
 
     const [activeShift, lastClosedShift] = await Promise.all([

@@ -9,9 +9,18 @@ import { formatCurrency } from "@/lib/format-utils";
 interface ShiftModalProps {
   isOpen: boolean;
   onClose: () => void;
+  required?: boolean;
+  isLogoutFlow?: boolean;
+  onSuccessClose?: () => void;
 }
 
-export const ShiftModal: React.FC<ShiftModalProps> = ({ isOpen, onClose }) => {
+export const ShiftModal: React.FC<ShiftModalProps> = ({
+  isOpen,
+  onClose,
+  required = false,
+  isLogoutFlow = false,
+  onSuccessClose,
+}) => {
   const { user } = useAuthStore();
   const { activeShift, setActiveShift } = usePosStore();
 
@@ -118,13 +127,26 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({ isOpen, onClose }) => {
                 : "Open Cashier Shift"}
             </span>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400">
-            <X className="w-5 h-5" />
-          </button>
+          {!required || zReportData ? (
+            <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400">
+              <X className="w-5 h-5" />
+            </button>
+          ) : (
+            <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-900/60 text-rose-300 rounded border border-rose-500/30">
+              شفٹ لازمی ہے (Mandatory)
+            </span>
+          )}
         </div>
 
         {/* Content */}
         <div className="p-5 overflow-y-auto space-y-4">
+          {isLogoutFlow && !zReportData && (
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs font-bold flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>لاگ آؤٹ کرنے سے پہلے دراز کا کیش کاؤنٹ کر کے شفٹ کلوز (Z-Report) کرنا لازمی ہے۔</span>
+            </div>
+          )}
+
           {zReportData ? (
             /* Z-Report Summary */
             <div id="zreport-printable-area" className="space-y-4 font-mono text-xs">
@@ -193,10 +215,14 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({ isOpen, onClose }) => {
                   <span>Print Z-Report</span>
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={() => {
+                    if (onSuccessClose) onSuccessClose();
+                    setZReportData(null);
+                    onClose();
+                  }}
                   className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold"
                 >
-                  Close
+                  Close & Complete
                 </button>
               </div>
             </div>

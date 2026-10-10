@@ -64,6 +64,11 @@ export default function PosPage() {
   };
 
   const handleCameraScanSuccess = (decodedBarcode: string) => {
+    if (!activeShift) {
+      alert("برائے مہربانی پہلے شفٹ اوپن کریں! (Please open cashier shift first)");
+      setIsShiftOpen(true);
+      return;
+    }
     const matched = products.find(
       (p) =>
         p.barcode.toLowerCase() === decodedBarcode.toLowerCase() ||
@@ -81,6 +86,11 @@ export default function PosPage() {
   };
 
   const handleOpenPaymentWithMethod = (method: "CASH" | "CREDIT" = "CASH") => {
+    if (!activeShift) {
+      alert("برائے مہربانی پہلے کیشئر شفٹ اوپن کریں! اس کے بغیر انوائس نہیں بن سکتی۔ (Please open cashier shift first)");
+      setIsShiftOpen(true);
+      return;
+    }
     setPaymentMethodForModal(method);
     setIsPaymentOpen(true);
   };
@@ -187,7 +197,11 @@ export default function PosPage() {
       )}
 
       {/* Shift Open/Close & Z-Report Modal */}
-      <ShiftModal isOpen={isShiftOpen} onClose={() => setIsShiftOpen(false)} />
+      <ShiftModal
+        isOpen={isShiftOpen}
+        required={!activeShift}
+        onClose={() => setIsShiftOpen(false)}
+      />
 
       {/* HTML5 Camera Barcode Scanner Modal */}
       <BarcodeScannerModal

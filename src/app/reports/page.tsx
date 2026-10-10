@@ -69,6 +69,9 @@ export default function ReportsPage() {
   // Filters
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>("ALL");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("ALL");
+  const [selectedCashierId, setSelectedCashierId] = useState<string>("ALL");
+  const [shiftSummary, setShiftSummary] = useState<any | null>(null);
+  const [cashierList, setCashierList] = useState<any[]>([]);
 
   // Invoice Details & Return Modals
   const [selectedInvoiceForModal, setSelectedInvoiceForModal] = useState<any | null>(null);
@@ -159,9 +162,19 @@ export default function ReportsPage() {
       }
       // 7. Shifts & Cash Register Closings (Z-Reports)
       else if (activeTab === "shifts") {
-        const res = await fetch("/api/pos/shifts?history=true");
+        const query = new URLSearchParams({
+          history: "true",
+          startDate,
+          endDate,
+          ...(selectedCashierId !== "ALL" ? { cashierId: selectedCashierId } : {}),
+        });
+        const res = await fetch(`/api/pos/shifts?${query.toString()}`);
         const data = await res.json();
-        if (data.success) setShiftData(data.shifts);
+        if (data.success) {
+          setShiftData(data.shifts);
+          setShiftSummary(data.summary);
+          if (data.cashiers) setCashierList(data.cashiers);
+        }
       }
     } catch (e) {
       console.error("Failed to load report data:", e);
@@ -188,7 +201,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadReportData();
-  }, [activeTab, startDate, endDate, selectedSupplierId, selectedCustomerId]);
+  }, [activeTab, startDate, endDate, selectedSupplierId, selectedCustomerId, selectedCashierId]);
 
   const handlePrint = () => {
     window.print();
@@ -382,141 +395,158 @@ export default function ReportsPage() {
         </div>
 
         {/* Date Filters & Presets (Weekly, Monthly, Custom) */}
-        {activeTab !== "shifts" && (
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
-            {/* Quick Presets */}
-            <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
-              <span className="text-xs text-slate-500 font-semibold mr-1">Period:</span>
-              <button
-                onClick={() => applyPreset("today")}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "today" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Today (آج)
-              </button>
-              <button
-                onClick={() => applyPreset("yesterday")}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "yesterday" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Yesterday (کل)
-              </button>
-              <button
-                onClick={() => applyPreset("week")}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "week" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Last 7 Days (ہفتہ وار)
-              </button>
-              <button
-                onClick={() => applyPreset("month")}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "month" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                Last 30 Days (ماہانہ)
-              </button>
-              <button
-                onClick={() => applyPreset("all")}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
-                  preset === "all" ? "bg-emerald-700 text-white shadow-sm" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
-                }`}
-              >
-                All History (تمام تاریخیں)
-              </button>
-            </div>
+        {/* Date Filters & Presets (Weekly, Monthly, Custom) */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1">
+          {/* Quick Presets */}
+          <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+            <span className="text-xs text-slate-500 font-semibold mr-1">Period:</span>
+            <button
+              onClick={() => applyPreset("today")}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                preset === "today" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              Today (آج)
+            </button>
+            <button
+              onClick={() => applyPreset("yesterday")}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                preset === "yesterday" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              Yesterday (کل)
+            </button>
+            <button
+              onClick={() => applyPreset("week")}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                preset === "week" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              Last 7 Days (ہفتہ وار)
+            </button>
+            <button
+              onClick={() => applyPreset("month")}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                preset === "month" ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              Last 30 Days (ماہانہ)
+            </button>
+            <button
+              onClick={() => applyPreset("all")}
+              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition ${
+                preset === "all" ? "bg-emerald-700 text-white shadow-sm" : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200"
+              }`}
+            >
+              All History (تمام تاریخیں)
+            </button>
+          </div>
 
-            {/* Custom Date Pickers & Filters */}
-            <div className="flex items-center space-x-2 text-xs flex-wrap gap-y-1">
-              {activeTab === "sales" && (
-                <div className="flex items-center space-x-1 mr-2">
-                  <span className="font-semibold text-slate-600">Customer:</span>
-                  <select
-                    value={selectedCustomerId}
-                    onChange={(e) => setSelectedCustomerId(e.target.value)}
-                    className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
-                  >
-                    <option value="ALL">All Customers (تمام گاہک)</option>
-                    {customerData.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} {c.phone ? `(${c.phone})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {activeTab === "purchases" && (
-                <div className="flex items-center space-x-1 mr-2">
-                  <span className="font-semibold text-slate-600">Vendor:</span>
-                  <select
-                    value={selectedSupplierId}
-                    onChange={(e) => setSelectedSupplierId(e.target.value)}
-                    className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
-                  >
-                    <option value="ALL">All Suppliers (تمام وینڈرز)</option>
-                    {supplierData.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.companyName || "Vendor"})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-                <Calendar className="w-4 h-4 text-slate-500" />
-                <span className="text-slate-600 font-semibold">From:</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    setPreset("custom");
-                    const newStart = e.target.value;
-                    setStartDate(newStart);
-                    if (endDate && newStart > endDate) {
-                      setEndDate(newStart);
-                    }
-                  }}
-                  className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
-                />
-                <span className="text-slate-600 font-semibold">To:</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => {
-                    setPreset("custom");
-                    const newEnd = e.target.value;
-                    setEndDate(newEnd);
-                    if (startDate && newEnd < startDate) {
-                      setStartDate(newEnd);
-                    }
-                  }}
-                  className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
-                />
-                <button
-                  onClick={() => loadReportData()}
-                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-sm"
+          {/* Custom Date Pickers & Filters */}
+          <div className="flex items-center space-x-2 text-xs flex-wrap gap-y-1">
+            {activeTab === "sales" && (
+              <div className="flex items-center space-x-1 mr-2">
+                <span className="font-semibold text-slate-600">Customer:</span>
+                <select
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
                 >
-                  <Filter className="w-3 h-3 text-emerald-400" />
-                  <span>Filter</span>
-                </button>
-                {(startDate || endDate) && (
-                  <button
-                    onClick={() => applyPreset("all")}
-                    title="Clear date filter to view all records"
-                    className="px-2 py-1 text-slate-500 hover:text-rose-600 transition text-xs font-semibold"
-                  >
-                    Reset
-                  </button>
-                )}
+                  <option value="ALL">All Customers (تمام گاہک)</option>
+                  {customerData.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.phone ? `(${c.phone})` : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
+            )}
+
+            {activeTab === "purchases" && (
+              <div className="flex items-center space-x-1 mr-2">
+                <span className="font-semibold text-slate-600">Vendor:</span>
+                <select
+                  value={selectedSupplierId}
+                  onChange={(e) => setSelectedSupplierId(e.target.value)}
+                  className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
+                >
+                  <option value="ALL">All Suppliers (تمام وینڈرز)</option>
+                  {supplierData.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.companyName || "Vendor"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {activeTab === "shifts" && (
+              <div className="flex items-center space-x-1 mr-2">
+                <span className="font-semibold text-slate-600">Cashier:</span>
+                <select
+                  value={selectedCashierId}
+                  onChange={(e) => setSelectedCashierId(e.target.value)}
+                  className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
+                >
+                  <option value="ALL">All Cashiers (تمام کیشئیر)</option>
+                  {cashierList.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.fullName || c.username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+              <Calendar className="w-4 h-4 text-slate-500" />
+              <span className="text-slate-600 font-semibold">From:</span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => {
+                  setPreset("custom");
+                  const newStart = e.target.value;
+                  setStartDate(newStart);
+                  if (endDate && newStart > endDate) {
+                    setEndDate(newStart);
+                  }
+                }}
+                className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
+              />
+              <span className="text-slate-600 font-semibold">To:</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => {
+                  setPreset("custom");
+                  const newEnd = e.target.value;
+                  setEndDate(newEnd);
+                  if (startDate && newEnd < startDate) {
+                    setStartDate(newEnd);
+                  }
+                }}
+                className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
+              />
+              <button
+                onClick={() => loadReportData()}
+                className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-sm"
+              >
+                <Filter className="w-3 h-3 text-emerald-400" />
+                <span>Filter</span>
+              </button>
+              {(startDate || endDate) && (
+                <button
+                  onClick={() => applyPreset("all")}
+                  title="Clear date filter to view all records"
+                  className="px-2 py-1 text-slate-500 hover:text-rose-600 transition text-xs font-semibold"
+                >
+                  Reset
+                </button>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* =========================================================================
@@ -1268,21 +1298,151 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* 7. SHIFT CLOSING REGISTER (Z-REPORTS & DRAWER HEADS) */}
+        {/* 7. SHIFT CLOSING REGISTER (Z-REPORTS & DRAWER AUDIT) */}
         {activeTab === "shifts" && (
-          <div className="space-y-5">
-            <div className="p-4 bg-slate-50 rounded-xl border flex justify-between items-center">
-              <div>
-                <span className="text-xs text-slate-500 font-semibold uppercase">Cash Drawer Shifts History</span>
-                <div className="text-xl font-black text-slate-900">
-                  {shiftData.length} Shifts Audited
+          <div className="space-y-6">
+            {/* 5 KPI Summary Cards for Cash Drawer Reconciliation */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-slate-500 mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Total Shifts</span>
+                  <Clock className="w-4 h-4 text-slate-400" />
+                </div>
+                <div>
+                  <div className="text-xl font-black text-slate-900">
+                    {shiftSummary ? shiftSummary.totalShifts : shiftData.length}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    {shiftSummary
+                      ? `${shiftSummary.openShiftsCount} Open · ${shiftSummary.closedShiftsCount} Closed`
+                      : "Register Sessions"}
+                  </div>
                 </div>
               </div>
-              <div className="text-right text-xs text-slate-500">
-                Tracks shift opening, sales collection, expected cash vs physical drawer cash closing
+
+              <div className="bg-blue-50/50 border border-blue-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-blue-700 mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Opening Float</span>
+                  <DollarSign className="w-4 h-4 text-blue-500" />
+                </div>
+                <div>
+                  <div className="text-xl font-black text-blue-900">
+                    {formatCurrency(shiftSummary?.totalOpeningCash || 0)}
+                  </div>
+                  <div className="text-[10px] text-blue-600 font-medium mt-0.5">
+                    Starting drawer cash
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-emerald-700 mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Shift Sales</span>
+                  <TrendingUp className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div>
+                  <div className="text-xl font-black text-emerald-900">
+                    {formatCurrency(shiftSummary?.totalSales || 0)}
+                  </div>
+                  <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                    Recorded invoices
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3.5 flex flex-col justify-between">
+                <div className="flex items-center justify-between text-indigo-700 mb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Expected Cash</span>
+                  <Layers className="w-4 h-4 text-indigo-500" />
+                </div>
+                <div>
+                  <div className="text-xl font-black text-indigo-900">
+                    {formatCurrency(shiftSummary?.totalExpectedCash || 0)}
+                  </div>
+                  <div className="text-[10px] text-indigo-600 font-medium mt-0.5">
+                    Float + Cash Sales
+                  </div>
+                </div>
+              </div>
+
+              <div className={`border rounded-xl p-3.5 flex flex-col justify-between ${
+                shiftSummary && shiftSummary.shortageCount > 0
+                  ? "bg-rose-50/60 border-rose-300"
+                  : shiftSummary && shiftSummary.totalDifference > 0
+                  ? "bg-amber-50/60 border-amber-300"
+                  : "bg-slate-50 border-slate-200"
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${
+                    shiftSummary && shiftSummary.shortageCount > 0 ? "text-rose-700" : "text-slate-700"
+                  }`}>
+                    Closing Counted
+                  </span>
+                  <DollarSign className={`w-4 h-4 ${
+                    shiftSummary && shiftSummary.shortageCount > 0 ? "text-rose-500" : "text-slate-400"
+                  }`} />
+                </div>
+                <div>
+                  <div className={`text-xl font-black ${
+                    shiftSummary && shiftSummary.shortageCount > 0 ? "text-rose-900" : "text-slate-900"
+                  }`}>
+                    {formatCurrency(shiftSummary?.totalClosingCash || 0)}
+                  </div>
+                  <div className={`text-[10px] font-bold mt-0.5 ${
+                    shiftSummary && shiftSummary.totalDifference < 0
+                      ? "text-rose-600"
+                      : shiftSummary && shiftSummary.totalDifference > 0
+                      ? "text-amber-600"
+                      : "text-emerald-600"
+                  }`}>
+                    {shiftSummary && shiftSummary.totalDifference !== 0
+                      ? `Net Diff: ${shiftSummary.totalDifference > 0 ? "+" : ""}${formatCurrency(shiftSummary.totalDifference)}`
+                      : "Drawer Balanced"}
+                  </div>
+                </div>
               </div>
             </div>
 
+            {/* Cash Shortage & Discrepancy Alert Banner */}
+            {shiftSummary && shiftSummary.shortageCount > 0 && (
+              <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-4 flex items-start space-x-3 text-rose-900">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="flex-1 text-xs">
+                  <div className="font-black text-sm text-rose-900 flex items-center space-x-1.5">
+                    <span>⚠️ CASH SHORTAGE ALERT / کیش کی کمی کا الرٹ</span>
+                    <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded font-black text-xs">
+                      {shiftSummary.shortageCount} Shift{shiftSummary.shortageCount > 1 ? "s" : ""} Short
+                    </span>
+                  </div>
+                  <p className="mt-1 text-rose-800">
+                    A total cash shortage of <strong className="font-black text-rose-950 underline">{formatCurrency(shiftSummary.totalShortageAmount)}</strong> was reported across {shiftSummary.shortageCount} shift closings. Counted cash was less than system expected cash. Please review the cashier details below.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {shiftSummary && shiftSummary.totalDifference > 0 && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 flex items-start space-x-3 text-amber-900">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <div className="font-bold text-amber-900">Cash Surplus Recorded (اضافی کیش)</div>
+                  <p className="text-amber-800 mt-0.5">
+                    Physical closing drawer cash exceeded expected cash by <strong className="font-bold">+{formatCurrency(shiftSummary.totalDifference)}</strong>.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {shiftSummary && shiftSummary.closedShiftsCount > 0 && shiftSummary.totalDifference === 0 && (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex items-center space-x-3 text-emerald-900">
+                <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div className="text-xs font-semibold">
+                  All {shiftSummary.closedShiftsCount} closed drawer shifts perfectly balanced. Physical counted cash matched system expected cash with zero discrepancy.
+                </div>
+              </div>
+            )}
+
+            {/* Shifts Audit Table */}
             <div className="overflow-x-auto border rounded-xl">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b">
@@ -1297,19 +1457,20 @@ export default function ReportsPage() {
                     <th className="py-2.5 px-3 text-right">Closing Drawer</th>
                     <th className="py-2.5 px-3 text-right">Difference (فرق)</th>
                     <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3">Remarks / Notes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-slate-400">
+                      <td colSpan={11} className="py-8 text-center text-slate-400">
                         Loading shift reports...
                       </td>
                     </tr>
                   ) : shiftData.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-slate-400">
-                        No shifts recorded yet.
+                      <td colSpan={11} className="py-8 text-center text-slate-400">
+                        No shifts recorded for the selected period.
                       </td>
                     </tr>
                   ) : (
@@ -1321,10 +1482,10 @@ export default function ReportsPage() {
                         <td className="py-2.5 px-3 font-medium text-slate-800">
                           {sh.cashier?.fullName || sh.cashier?.username}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-500">
+                        <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">
                           {new Date(sh.openedAt).toLocaleString()}
                         </td>
-                        <td className="py-2.5 px-3 text-slate-500">
+                        <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">
                           {sh.closedAt ? new Date(sh.closedAt).toLocaleString() : "Still Open"}
                         </td>
                         <td className="py-2.5 px-3 text-right font-medium text-slate-700">
@@ -1351,7 +1512,7 @@ export default function ReportsPage() {
                           }`}
                         >
                           {sh.cashDifference !== null && sh.cashDifference !== undefined
-                            ? formatCurrency(sh.cashDifference)
+                            ? (sh.cashDifference > 0 ? `+${formatCurrency(sh.cashDifference)}` : formatCurrency(sh.cashDifference))
                             : "-"}
                         </td>
                         <td className="py-2.5 px-3 text-center">
@@ -1364,6 +1525,9 @@ export default function ReportsPage() {
                           >
                             {sh.status}
                           </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-500 text-[11px] max-w-xs truncate" title={sh.notes || ""}>
+                          {sh.notes || "-"}
                         </td>
                       </tr>
                     ))

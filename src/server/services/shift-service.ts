@@ -2,15 +2,91 @@ import db from "@/lib/db";
 import { OpenShiftInput, CloseShiftInput } from "@/lib/validations/shift";
 
 export class ShiftService {
-  static async getAllShifts(limit: number = 50) {
-    return db.shift.findMany({
-      take: limit,
-      orderBy: { openedAt: "desc" },
-      include: {
-        cashier: { select: { fullName: true, username: true } },
-        _count: { select: { sales: true } },
+  static async getAllShifts(params?: {
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    cashierId?: string;
+  }) {
+    const limit = params?.limit || 150;
+    const where: any = {};
+
+    if (params?.cashierId && params.cashierId !== "ALL") {
+      where.cashierId = params.cashierId;
+    }
+
+    if (params?.startDate || params?.endDate) {
+      where.openedAt = {};
+      if (params?.startDate) {
+        where.openedAt.gte = new Date(`${params.startDate}T00:00:00.000Z`);
+      }
+      if (params?.endDate) {
+        where.openedAt.lte = new Date(`${params.endDate}T23:59:59.999Z`);
+      }
+    }
+
+    const [shifts, cashiers] = await Promise.all([
+      db.shift.findMany({
+        where,
+        take: limit,
+        orderBy: { openedAt: "desc" },
+        include: {
+          cashier: { select: { id: true, fullName: true, username: true } },
+          _count: { select: { sales: true } },
+        },
+      }),
+      db.user.findMany({
+        select: { id: true, fullName: true, username: true, role: true },
+        orderBy: { fullName: "asc" },
+      }),
+    ]);
+
+    let totalOpeningCash = 0;
+    let totalSales = 0;
+    let totalExpectedCash = 0;
+    let totalClosingCash = 0;
+    let totalDifference = 0;
+    let closedShiftsCount = 0;
+    let openShiftsCount = 0;
+    let shortageCount = 0;
+    let totalShortageAmount = 0;
+
+    for (const s of shifts) {
+      totalOpeningCash += s.openingCash;
+      totalSales += s.totalSalesAmount;
+      totalExpectedCash += (s.systemExpectedCash || s.openingCash);
+
+      if (s.status === "CLOSED" && s.closingCash !== null && s.closingCash !== undefined) {
+        closedShiftsCount++;
+        totalClosingCash += s.closingCash;
+        if (s.cashDifference !== null && s.cashDifference !== undefined) {
+          totalDifference += s.cashDifference;
+          if (s.cashDifference < 0) {
+            shortageCount++;
+            totalShortageAmount += Math.abs(s.cashDifference);
+          }
+        }
+      } else {
+        openShiftsCount++;
+      }
+    }
+
+    return {
+      shifts,
+      cashiers,
+      summary: {
+        totalShifts: shifts.length,
+        openShiftsCount,
+        closedShiftsCount,
+        totalOpeningCash,
+        totalSales,
+        totalExpectedCash,
+        totalClosingCash,
+        totalDifference,
+        shortageCount,
+        totalShortageAmount,
       },
-    });
+    };
   }
 
   static async getCurrentShift(cashierId: string) {
