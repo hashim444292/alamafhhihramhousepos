@@ -7,9 +7,25 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get("productId") || undefined;
-    const limit = Number(searchParams.get("limit")) || 50;
+    const movementType = searchParams.get("movementType") || undefined;
+    const performedById = searchParams.get("performedById") || undefined;
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+    const limit = Number(searchParams.get("limit")) || 200;
 
-    const movements = await InventoryService.getMovements(limit, productId);
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    if (startDateParam) startDate = new Date(`${startDateParam}T00:00:00.000Z`);
+    if (endDateParam) endDate = new Date(`${endDateParam}T23:59:59.999Z`);
+
+    const movements = await InventoryService.getMovements({
+      limit,
+      productId,
+      movementType,
+      startDate,
+      endDate,
+      performedById,
+    });
     return NextResponse.json({ success: true, movements });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

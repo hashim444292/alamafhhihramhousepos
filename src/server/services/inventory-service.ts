@@ -58,17 +58,55 @@ export class InventoryService {
     });
   }
 
-  static async getMovements(limit = 100, productId?: string) {
+  static async getMovements(params?: {
+    limit?: number;
+    productId?: string;
+    movementType?: string;
+    startDate?: Date;
+    endDate?: Date;
+    performedById?: string;
+  }) {
+    const limit = params?.limit || 200;
     const where: any = {};
-    if (productId) where.productId = productId;
+
+    if (params?.productId) where.productId = params.productId;
+    if (params?.performedById && params.performedById !== "ALL") {
+      where.performedById = params.performedById;
+    }
+
+    if (params?.movementType && params.movementType !== "ALL") {
+      if (params.movementType === "LOSS") {
+        where.movementType = { in: ["STOCK_OUT_DAMAGE", "STOCK_OUT_STOLEN"] };
+      } else {
+        where.movementType = params.movementType;
+      }
+    }
+
+    if (params?.startDate || params?.endDate) {
+      where.createdAt = {};
+      if (params.startDate) where.createdAt.gte = params.startDate;
+      if (params.endDate) where.createdAt.lte = params.endDate;
+    }
 
     return db.stockMovement.findMany({
       where,
       take: limit,
       orderBy: { createdAt: "desc" },
       include: {
-        product: { select: { id: true, name: true, sku: true, barcode: true } },
-        performedBy: { select: { id: true, fullName: true } },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+            barcode: true,
+            purchasePrice: true,
+            sellingPrice: true,
+            unit: true,
+          },
+        },
+        performedBy: {
+          select: { id: true, fullName: true, username: true, role: true },
+        },
       },
     });
   }

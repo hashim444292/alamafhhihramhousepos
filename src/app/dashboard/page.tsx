@@ -17,6 +17,7 @@ import {
   Truck,
   Users,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
@@ -417,6 +418,25 @@ export default function DashboardPage() {
                 ))
               )}
             </div>
+          </div>
+
+          {/* Loss & Damages Quick Audit Card */}
+          <div className="bg-rose-50/70 border border-rose-200 rounded-2xl p-4 shadow-sm space-y-2 col-span-1 md:col-span-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-rose-950 font-bold text-sm">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+                <span>ٹوٹ پھوٹ و چوری شدہ مال کا آڈٹ (Broken & Stolen Items Audit)</span>
+              </div>
+              <Link
+                href="/reports?tab=damages"
+                className="text-xs font-bold text-rose-800 hover:text-rose-950 hover:underline flex items-center space-x-1"
+              >
+                <span>مکمل نقصان رپورٹ دیکھیں (View Loss Report) →</span>
+              </Link>
+            </div>
+            <p className="text-xs text-rose-800/80">
+              دکان میں کیشئیرز اور عملے کی جانب سے رپورٹ کردہ تمام ٹوٹی ہوئی اشیاء اور چوری شدہ مال کی تعداد اور مالی نقصان یہاں سے مانیٹر اور تصدیق کریں۔
+            </p>
           </div>
         </div>
       )}

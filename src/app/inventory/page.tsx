@@ -96,6 +96,8 @@ export default function InventoryPage() {
   // Stock Movements Audit Modal
   const [movementsModalOpen, setMovementsModalOpen] = useState(false);
   const [movements, setMovements] = useState<any[]>([]);
+  const [movementsTypeFilter, setMovementsTypeFilter] = useState<string>("ALL");
+  const [movementsLoading, setMovementsLoading] = useState(false);
 
   const fetchInventory = async (silent: boolean = false) => {
     if (!silent) setLoading(true);
@@ -433,19 +435,24 @@ export default function InventoryPage() {
     setBarcodeModalOpen(true);
   };
 
-  const handleOpenMovements = async (productId?: string) => {
+  const handleOpenMovements = async (productId?: string, movementType: string = "ALL") => {
+    setMovementsLoading(true);
     try {
+      const typeParam = movementType && movementType !== "ALL" ? `&movementType=${movementType}` : "";
       const url = productId
-        ? `/api/inventory/stock-movements?productId=${productId}`
-        : "/api/inventory/stock-movements";
+        ? `/api/inventory/stock-movements?productId=${productId}${typeParam}&limit=200`
+        : `/api/inventory/stock-movements?limit=200${typeParam}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
-        setMovements(data.movements);
+        setMovements(data.movements || []);
+        setMovementsTypeFilter(movementType);
         setMovementsModalOpen(true);
       }
     } catch (e) {
       alert("Failed to load stock movements");
+    } finally {
+      setMovementsLoading(false);
     }
   };
 
@@ -535,11 +542,20 @@ export default function InventoryPage() {
           )}
 
           <button
-            onClick={() => handleOpenMovements()}
+            onClick={() => handleOpenMovements(undefined, "LOSS")}
+            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 transition shadow-xs"
+            title="ٹوٹ پھوٹ یا چوری شدہ اشیاء کا ریکارڈ"
+          >
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
+            <span>Broken & Stolen (ٹوٹ پھوٹ و چوری)</span>
+          </button>
+
+          <button
+            onClick={() => handleOpenMovements(undefined, "ALL")}
             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs sm:text-sm font-semibold flex items-center space-x-1.5 transition"
           >
             <History className="w-4 h-4 text-slate-600" />
-            <span>Audit History</span>
+            <span>Audit History (تمام حرکات)</span>
           </button>
         </div>
       </div>
@@ -1217,65 +1233,206 @@ export default function InventoryPage() {
       )}
 
       {/* Stock Movement Audit Log Modal */}
-      {movementsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-3xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-bold text-base text-slate-900 flex items-center space-x-2">
-                <History className="w-5 h-5 text-emerald-600" />
-                <span>Stock Movement Audit Logs</span>
-              </h3>
-              <button
-                onClick={() => setMovementsModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {movementsModalOpen && (() => {
+        const brokenCount = movements
+          .filter((m) => m.movementType === "STOCK_OUT_DAMAGE")
+          .reduce((sum, m) => sum + Math.abs(m.quantity || 0), 0);
 
-            <div className="flex-1 overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 border-b">
-                  <tr>
-                    <th className="py-2.5 px-3">Date</th>
-                    <th className="py-2.5 px-3">Product</th>
-                    <th className="py-2.5 px-3">Type</th>
-                    <th className="py-2.5 px-3 text-right">Qty</th>
-                    <th className="py-2.5 px-3 text-right">Previous</th>
-                    <th className="py-2.5 px-3 text-right">New</th>
-                    <th className="py-2.5 px-3">Performed By</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {movements.map((m) => (
-                    <tr key={m.id} className="hover:bg-slate-50">
-                      <td className="py-2.5 px-3 text-slate-500">
-                        {new Date(m.createdAt).toLocaleString()}
-                      </td>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900">
-                        {m.product.name}
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-[11px]">{m.movementType}</td>
-                      <td
-                        className={`py-2.5 px-3 text-right font-bold ${
-                          m.quantity > 0 ? "text-emerald-600" : "text-rose-600"
-                        }`}
-                      >
-                        {m.quantity > 0 ? `+${m.quantity}` : m.quantity}
-                      </td>
-                      <td className="py-2.5 px-3 text-right text-slate-600">{m.previousStock}</td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">
-                        {m.newStock}
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-600">{m.performedBy?.fullName}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        const stolenCount = movements
+          .filter((m) => m.movementType === "STOCK_OUT_STOLEN")
+          .reduce((sum, m) => sum + Math.abs(m.quantity || 0), 0);
+
+        const lossTotalCost = movements
+          .filter((m) => m.movementType === "STOCK_OUT_DAMAGE" || m.movementType === "STOCK_OUT_STOLEN")
+          .reduce((sum, m) => {
+            const cost = Number(m.product?.purchasePrice) || 0;
+            return sum + cost * Math.abs(m.quantity || 0);
+          }, 0);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col">
+              <div className="flex justify-between items-center border-b pb-3">
+                <div className="flex items-center space-x-2">
+                  {movementsTypeFilter === "LOSS" ? (
+                    <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  ) : (
+                    <History className="w-5 h-5 text-emerald-600" />
+                  )}
+                  <h3 className="font-bold text-base text-slate-900">
+                    {movementsTypeFilter === "LOSS"
+                      ? "Broken & Stolen Loss Audit (ٹوٹ پھوٹ و چوری شدہ اسٹاک لاگ)"
+                      : "Stock Movement Audit Logs (اسٹاک آڈٹ لاگ)"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setMovementsModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+                <div className="flex space-x-1">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMovements(undefined, "ALL")}
+                    className={`px-3 py-1 rounded-lg font-bold transition ${
+                      movementsTypeFilter === "ALL"
+                        ? "bg-slate-900 text-white shadow-xs"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    All Logs (تمام)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMovements(undefined, "LOSS")}
+                    className={`px-3 py-1 rounded-lg font-bold transition ${
+                      movementsTypeFilter === "LOSS"
+                        ? "bg-rose-700 text-white shadow-xs"
+                        : "bg-rose-50 text-rose-700 hover:bg-rose-100"
+                    }`}
+                  >
+                    ⚠️ Broken & Stolen (ٹوٹ پھوٹ و چوری)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMovements(undefined, "STOCK_IN_PO")}
+                    className={`px-3 py-1 rounded-lg font-bold transition ${
+                      movementsTypeFilter === "STOCK_IN_PO"
+                        ? "bg-emerald-700 text-white shadow-xs"
+                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                    }`}
+                  >
+                    📥 Purchases (خریداری)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMovements(undefined, "STOCK_OUT_SALE")}
+                    className={`px-3 py-1 rounded-lg font-bold transition ${
+                      movementsTypeFilter === "STOCK_OUT_SALE"
+                        ? "bg-indigo-700 text-white shadow-xs"
+                        : "bg-indigo-50 text-indigo-800 hover:bg-indigo-100"
+                    }`}
+                  >
+                    🛒 Sales (فروخت)
+                  </button>
+                </div>
+
+                <div className="text-[11px] text-slate-400 font-medium">
+                  کل ریکارڈز: {movements.length}
+                </div>
+              </div>
+
+              {/* Loss Summary bar if viewing LOSS */}
+              {movementsTypeFilter === "LOSS" && (
+                <div className="grid grid-cols-3 gap-3 bg-rose-50/60 border border-rose-200 p-3 rounded-xl text-center">
+                  <div>
+                    <div className="text-[11px] text-rose-700 font-medium">ٹوٹ پھوٹ (Broken)</div>
+                    <div className="text-lg font-black text-rose-900">{brokenCount} عدد</div>
+                  </div>
+                  <div className="border-x border-rose-200">
+                    <div className="text-[11px] text-amber-700 font-medium">چوری (Stolen)</div>
+                    <div className="text-lg font-black text-amber-900">{stolenCount} عدد</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-rose-800 font-medium">کل مالی نقصان (Loss Value)</div>
+                    <div className="text-lg font-black text-rose-950">
+                      Rs. {formatNumber(lossTotalCost)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto">
+                {movementsLoading ? (
+                  <div className="py-12 text-center text-xs text-slate-400">
+                    ریکارڈ لوڈ ہو رہا ہے... (Loading...)
+                  </div>
+                ) : movements.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-slate-400">
+                    کوئی ریکارڈ موجود نہیں ہے۔ (No movement records found)
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 border-b">
+                      <tr>
+                        <th className="py-2.5 px-3">Date</th>
+                        <th className="py-2.5 px-3">Product</th>
+                        <th className="py-2.5 px-3">Type</th>
+                        <th className="py-2.5 px-3 text-right">Qty</th>
+                        <th className="py-2.5 px-3 text-right">Previous</th>
+                        <th className="py-2.5 px-3 text-right">New</th>
+                        <th className="py-2.5 px-3">Reported / Performed By</th>
+                        <th className="py-2.5 px-3">Notes / Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {movements.map((m) => (
+                        <tr key={m.id} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">
+                            {new Date(m.createdAt).toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">
+                            <div>{m.product.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              {m.product.barcode || m.product.sku}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                m.movementType === "STOCK_OUT_DAMAGE"
+                                  ? "bg-rose-100 text-rose-800"
+                                  : m.movementType === "STOCK_OUT_STOLEN"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : m.movementType === "STOCK_IN_PO"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-slate-100 text-slate-700"
+                              }`}
+                            >
+                              {m.movementType === "STOCK_OUT_DAMAGE"
+                                ? "🔨 Broken"
+                                : m.movementType === "STOCK_OUT_STOLEN"
+                                ? "🕵️ Stolen"
+                                : m.movementType}
+                            </span>
+                          </td>
+                          <td
+                            className={`py-2.5 px-3 text-right font-black whitespace-nowrap ${
+                              m.quantity > 0 ? "text-emerald-600" : "text-rose-600"
+                            }`}
+                          >
+                            {m.quantity > 0 ? `+${m.quantity}` : m.quantity} {m.product?.unit || ""}
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-slate-600">{m.previousStock}</td>
+                          <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                            {m.newStock}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-700 whitespace-nowrap">
+                            <span className="font-bold">{m.performedBy?.fullName || "Staff"}</span>
+                            {m.performedBy?.role && (
+                              <span className="text-[10px] text-slate-400 ml-1">
+                                ({m.performedBy.role})
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-600 max-w-xs truncate" title={m.notes || ""}>
+                            {m.notes || "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
       {/* Add New Product Modal */}
       {addModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">

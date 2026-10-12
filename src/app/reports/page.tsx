@@ -24,6 +24,8 @@ import {
   RotateCcw,
   X,
   AlertCircle,
+  AlertTriangle,
+  ShieldAlert,
 } from "lucide-react";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { formatCurrency, formatNumber } from "@/lib/format-utils";
@@ -32,10 +34,22 @@ import { useAuthStore } from "@/store/auth-store";
 export default function ReportsPage() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<
-    "accounting" | "sales" | "purchases" | "expenses" | "customers" | "suppliers" | "shifts"
+    "accounting" | "sales" | "purchases" | "expenses" | "customers" | "suppliers" | "shifts" | "damages"
   >("sales");
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (
+        tabParam &&
+        ["accounting", "sales", "purchases", "expenses", "customers", "suppliers", "shifts", "damages"].includes(tabParam)
+      ) {
+        setActiveTab(tabParam as any);
+        return;
+      }
+    }
+
     if (user?.role === "ADMIN" || user?.role === "MANAGER") {
       setActiveTab("accounting");
     } else {
@@ -64,6 +78,8 @@ export default function ReportsPage() {
   const [customerData, setCustomerData] = useState<any[]>([]);
   const [supplierData, setSupplierData] = useState<any[]>([]);
   const [shiftData, setShiftData] = useState<any[]>([]);
+  const [damageLossData, setDamageLossData] = useState<any[]>([]);
+  const [damageTypeFilter, setDamageTypeFilter] = useState<"ALL" | "DAMAGE" | "STOLEN">("ALL");
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -184,6 +200,28 @@ export default function ReportsPage() {
           setShiftData(data.shifts);
           setShiftSummary(data.summary);
           if (data.cashiers) setCashierList(data.cashiers);
+        }
+      }
+      // 8. Broken / Damaged & Stolen Inventory Losses
+      else if (activeTab === "damages") {
+        const queryParams = new URLSearchParams({
+          movementType: "LOSS",
+          limit: "300",
+          ...(startDate ? { startDate } : {}),
+          ...(endDate ? { endDate } : {}),
+          ...(selectedCashierId !== "ALL" ? { performedById: selectedCashierId } : {}),
+        });
+        const res = await fetch(`/api/inventory/stock-movements?${queryParams.toString()}`);
+        const data = await res.json();
+        if (data.success) {
+          setDamageLossData(data.movements || []);
+          if (cashierList.length === 0) {
+            fetch("/api/pos/shifts?history=true&limit=1")
+              .then((r) => r.json())
+              .then((d) => {
+                if (d.success && d.cashiers) setCashierList(d.cashiers);
+              });
+          }
         }
       }
     } catch (e) {
@@ -402,6 +440,18 @@ export default function ReportsPage() {
             <Clock className="w-4 h-4" />
             <span>Shift Drawer Closings (کلوزنگ رجسٹر Z-Reports)</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("damages")}
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 transition ${
+              activeTab === "damages"
+                ? "bg-rose-700 text-white shadow-sm"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4 text-rose-300" />
+            <span>Loss & Damages (ٹوٹ پھوٹ و چوری)</span>
+          </button>
         </div>
 
         {/* Date Filters & Presets (Weekly, Monthly, Custom) */}
@@ -490,20 +540,37 @@ export default function ReportsPage() {
               </div>
             )}
 
-            {(activeTab === "shifts" || activeTab === "expenses") && (
+            {(activeTab === "shifts" || activeTab === "expenses" || activeTab === "damages") && (
               <div className="flex items-center space-x-1 mr-2">
-                <span className="font-semibold text-slate-600">Cashier:</span>
+                <span className="font-semibold text-slate-600">
+                  {activeTab === "damages" ? "Staff / Cashier:" : "Cashier:"}
+                </span>
                 <select
                   value={selectedCashierId}
                   onChange={(e) => setSelectedCashierId(e.target.value)}
                   className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
                 >
-                  <option value="ALL">All Cashiers (تمام کیشئیر)</option>
+                  <option value="ALL">All Staff (تمام عملہ)</option>
                   {cashierList.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.fullName || c.username}
+                      {c.fullName || c.username} ({c.role})
                     </option>
                   ))}
+                </select>
+              </div>
+            )}
+
+            {activeTab === "damages" && (
+              <div className="flex items-center space-x-1 mr-2">
+                <span className="font-semibold text-slate-600">نوعیت (Type):</span>
+                <select
+                  value={damageTypeFilter}
+                  onChange={(e) => setDamageTypeFilter(e.target.value as any)}
+                  className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
+                >
+                  <option value="ALL">All Types (ٹوٹ پھوٹ و چوری دونوں)</option>
+                  <option value="DAMAGE">🔨 Broken Only (صرف ٹوٹ پھوٹ)</option>
+                  <option value="STOLEN">🕵️ Stolen Only (صرف چوری / لاپتہ)</option>
                 </select>
               </div>
             )}
@@ -1632,6 +1699,230 @@ export default function ReportsPage() {
             </div>
           </div>
         )}
+
+        {/* 8. LOSS & DAMAGES AUDIT REPORT (ٹوٹ پھوٹ و چوری رپورٹ) */}
+        {activeTab === "damages" && (() => {
+          const filteredLossMovements = damageLossData.filter((m) => {
+            if (damageTypeFilter === "DAMAGE") return m.movementType === "STOCK_OUT_DAMAGE";
+            if (damageTypeFilter === "STOLEN") return m.movementType === "STOCK_OUT_STOLEN";
+            return true;
+          });
+
+          const totalBrokenCount = filteredLossMovements
+            .filter((m) => m.movementType === "STOCK_OUT_DAMAGE")
+            .reduce((sum, m) => sum + Math.abs(m.quantity || 0), 0);
+
+          const totalStolenCount = filteredLossMovements
+            .filter((m) => m.movementType === "STOCK_OUT_STOLEN")
+            .reduce((sum, m) => sum + Math.abs(m.quantity || 0), 0);
+
+          const totalQuantityLost = filteredLossMovements.reduce(
+            (sum, m) => sum + Math.abs(m.quantity || 0),
+            0
+          );
+
+          const totalFinancialLoss = filteredLossMovements.reduce((sum, m) => {
+            const cost = Number(m.product?.purchasePrice) || 0;
+            return sum + cost * Math.abs(m.quantity || 0);
+          }, 0);
+
+          return (
+            <div className="space-y-6">
+              {/* 4 KPI Summary Cards for Loss & Damage Verification */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl shadow-xs">
+                  <div className="flex items-center justify-between text-xs text-rose-700 font-bold mb-1">
+                    <span>ٹوٹ پھوٹ (Broken Items)</span>
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                  </div>
+                  <div className="text-2xl font-black text-rose-900">
+                    {formatNumber(totalBrokenCount)} <span className="text-xs font-semibold">عدد</span>
+                  </div>
+                  <div className="text-[10px] text-rose-600 mt-1">
+                    خراب یا ٹوٹی ہوئی اشیاء کی کل گنتی
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl shadow-xs">
+                  <div className="flex items-center justify-between text-xs text-amber-800 font-bold mb-1">
+                    <span>چوری / لاپتہ (Stolen)</span>
+                    <ShieldAlert className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="text-2xl font-black text-amber-950">
+                    {formatNumber(totalStolenCount)} <span className="text-xs font-semibold">عدد</span>
+                  </div>
+                  <div className="text-[10px] text-amber-700 mt-1">
+                    لاپتہ یا چوری شدہ مال کی تعداد
+                  </div>
+                </div>
+
+                <div className="bg-rose-950 border border-rose-900 p-4 rounded-2xl shadow-sm text-white">
+                  <div className="flex items-center justify-between text-xs text-rose-300 font-bold mb-1">
+                    <span>کل مالی نقصان (Total Loss Rs.)</span>
+                    <DollarSign className="w-4 h-4 text-rose-400" />
+                  </div>
+                  <div className="text-2xl font-black text-rose-100">
+                    {formatCurrency(totalFinancialLoss)}
+                  </div>
+                  <div className="text-[10px] text-rose-300/80 mt-1">
+                    خریداری لاگت کے حساب سے کل مالی خسارہ
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
+                  <div className="flex items-center justify-between text-xs text-slate-500 font-bold mb-1">
+                    <span>درج شدہ واقعات (Incidents)</span>
+                    <FileText className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div className="text-2xl font-black text-slate-900">
+                    {formatNumber(filteredLossMovements.length)} <span className="text-xs font-semibold">ریکارڈز</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    کیشئیر / مینیجر کے تصدیق شدہ لاگز
+                  </div>
+                </div>
+              </div>
+
+              {/* Table Header Controls */}
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 flex items-center space-x-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    <span>ٹوٹ پھوٹ و چوری کا مکمل آڈٹ لاگ (Detailed Damage & Stolen Audit Log)</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    یہ رپورٹ Admin, Manager اور Cashier تینوں کو اسٹاک کے نقصان کی تصدیق اور جوابدہی کے لیے میسر ہے۔
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Report (پرنٹ کریں)</span>
+                </button>
+              </div>
+
+              {/* Loss Audit Table */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-900 text-white border-b">
+                      <tr>
+                        <th className="py-3 px-3">#</th>
+                        <th className="py-3 px-3">تاریخ و وقت (Date)</th>
+                        <th className="py-3 px-3">پروڈکٹ نام و بارکوڈ (Product)</th>
+                        <th className="py-3 px-3">نقصان کی قسم (Type)</th>
+                        <th className="py-3 px-3 text-right">تعداد (Qty Lost)</th>
+                        <th className="py-3 px-3 text-right">یونٹ لاگت (Unit Cost)</th>
+                        <th className="py-3 px-3 text-right">مالی نقصان (Loss PKR)</th>
+                        <th className="py-3 px-3">درج کنندہ (Reported By)</th>
+                        <th className="py-3 px-3">تفصیل / وجہ (Reason / Notes)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={9} className="py-12 text-center text-slate-400">
+                            ریکارڈ لوڈ ہو رہا ہے... (Loading loss records...)
+                          </td>
+                        </tr>
+                      ) : filteredLossMovements.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="py-12 text-center text-slate-400">
+                            منتخب کردہ مدت میں کوئی ٹوٹ پھوٹ یا چوری کا واقعہ ریکارڈ نہیں ہوا۔ (No damages or stolen items recorded)
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredLossMovements.map((m, idx) => {
+                          const unitCost = Number(m.product?.purchasePrice) || 0;
+                          const lossAmount = unitCost * Math.abs(m.quantity || 0);
+
+                          return (
+                            <tr key={m.id} className="hover:bg-slate-50 transition">
+                              <td className="py-3 px-3 text-slate-400 font-mono">
+                                {idx + 1}
+                              </td>
+                              <td className="py-3 px-3 text-slate-600 whitespace-nowrap">
+                                <div>{new Date(m.createdAt).toLocaleDateString()}</div>
+                                <div className="text-[10px] text-slate-400">
+                                  {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="font-bold text-slate-900">
+                                  {m.product?.name || "نامعلوم آئٹم"}
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-mono">
+                                  SKU: {m.product?.sku || "-"} | Barcode: {m.product?.barcode || "-"}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    m.movementType === "STOCK_OUT_DAMAGE"
+                                      ? "bg-rose-100 text-rose-800 border border-rose-300"
+                                      : "bg-amber-100 text-amber-900 border border-amber-300"
+                                  }`}
+                                >
+                                  {m.movementType === "STOCK_OUT_DAMAGE"
+                                    ? "🔨 ٹوٹ پھوٹ / Damage"
+                                    : "🕵️ چوری / Stolen"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-right font-black text-rose-600 text-sm whitespace-nowrap">
+                                -{Math.abs(m.quantity)} {m.product?.unit || "pcs"}
+                              </td>
+                              <td className="py-3 px-3 text-right font-semibold text-slate-700 whitespace-nowrap">
+                                {unitCost > 0 ? formatCurrency(unitCost) : "-"}
+                              </td>
+                              <td className="py-3 px-3 text-right font-black text-rose-700 whitespace-nowrap">
+                                {lossAmount > 0 ? formatCurrency(lossAmount) : "-"}
+                              </td>
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <div className="font-bold text-slate-900">
+                                  {m.performedBy?.fullName || m.performedBy?.username || "Staff"}
+                                </div>
+                                <div className="text-[10px] text-slate-500">
+                                  Role: <span className="font-semibold text-indigo-700">{m.performedBy?.role || "USER"}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-slate-700 max-w-xs">
+                                <span className="text-xs bg-slate-50 px-2 py-1 rounded-md border border-slate-100 block">
+                                  {m.notes || "کوئی ریمارکس درج نہیں"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                    {filteredLossMovements.length > 0 && (
+                      <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-300">
+                        <tr>
+                          <td colSpan={4} className="py-3 px-3 text-slate-900 font-black">
+                            مجموعی ٹوٹل (Total Quantity & Loss Value):
+                          </td>
+                          <td className="py-3 px-3 text-right text-rose-700 font-black text-sm">
+                            -{formatNumber(totalQuantityLost)}
+                          </td>
+                          <td className="py-3 px-3 text-right text-slate-500">-</td>
+                          <td className="py-3 px-3 text-right text-rose-800 font-black text-sm">
+                            {formatCurrency(totalFinancialLoss)}
+                          </td>
+                          <td colSpan={2} className="py-3 px-3 text-slate-500 text-right">
+                            {filteredLossMovements.length} واقعات
+                          </td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Report Footer / Signature Line for Audit */}
         <div className="pt-8 border-t border-slate-200 grid grid-cols-2 text-xs text-slate-500">
