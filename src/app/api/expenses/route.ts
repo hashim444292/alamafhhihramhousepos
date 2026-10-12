@@ -11,12 +11,13 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category") || undefined;
+    const cashierId = searchParams.get("cashierId") || undefined;
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
     const { gte: startDate, lte: endDate } = parseDateFilter(startDateParam, endDateParam);
 
-    const expenses = await ExpenseService.getAll(category, startDate, endDate);
+    const expenses = await ExpenseService.getAll(category, startDate, endDate, cashierId);
     return NextResponse.json({ success: true, expenses });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -26,9 +27,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorizedResponse();
-  if (user.role === "CASHIER") {
-    return forbiddenResponse("Cashiers are not authorized to log store expenses");
-  }
 
   try {
     const body = await req.json();

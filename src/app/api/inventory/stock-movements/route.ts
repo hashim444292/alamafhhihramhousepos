@@ -19,9 +19,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorizedResponse();
-  if (user.role === "CASHIER") {
-    return forbiddenResponse("Only Admins or Managers can record manual stock adjustments");
-  }
 
   try {
     const body = await req.json();
@@ -31,6 +28,18 @@ export async function POST(req: NextRequest) {
         { success: false, error: parsed.error.errors[0].message },
         { status: 400 }
       );
+    }
+
+    // Cashiers are permitted to submit broken/damaged or stolen loss reports
+    if (user.role === "CASHIER") {
+      if (
+        parsed.data.movementType !== "STOCK_OUT_DAMAGE" &&
+        parsed.data.movementType !== "STOCK_OUT_STOLEN"
+      ) {
+        return forbiddenResponse(
+          "Cashiers can only report damaged, broken, or stolen inventory loss."
+        );
+      }
     }
 
     const result = await InventoryService.adjustStock(parsed.data, user.id);

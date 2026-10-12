@@ -144,9 +144,19 @@ export default function ReportsPage() {
       }
       // 4. Operational Expenses
       else if (activeTab === "expenses") {
-        const res = await fetch(`/api/expenses?${query}`);
+        const cashierParam = selectedCashierId !== "ALL" ? `&cashierId=${selectedCashierId}` : "";
+        const res = await fetch(`/api/expenses?${query}${cashierParam}`);
         const data = await res.json();
-        if (data.success) setExpenseData(data.expenses);
+        if (data.success) {
+          setExpenseData(data.expenses);
+          if (cashierList.length === 0) {
+            fetch("/api/pos/shifts?history=true&limit=1")
+              .then((r) => r.json())
+              .then((d) => {
+                if (d.success && d.cashiers) setCashierList(d.cashiers);
+              });
+          }
+        }
       }
       // 5. Customer Udhaar & Ledgers
       else if (activeTab === "customers") {
@@ -480,7 +490,7 @@ export default function ReportsPage() {
               </div>
             )}
 
-            {activeTab === "shifts" && (
+            {(activeTab === "shifts" || activeTab === "expenses") && (
               <div className="flex items-center space-x-1 mr-2">
                 <span className="font-semibold text-slate-600">Cashier:</span>
                 <select
@@ -1125,6 +1135,7 @@ export default function ReportsPage() {
                   <tr>
                     <th className="py-2.5 px-3">Date</th>
                     <th className="py-2.5 px-3">Voucher #</th>
+                    <th className="py-2.5 px-3">Recorded By (کیشیئر)</th>
                     <th className="py-2.5 px-3">Category (Head of Account)</th>
                     <th className="py-2.5 px-3">Description</th>
                     <th className="py-2.5 px-3">Mode</th>
@@ -1134,13 +1145,13 @@ export default function ReportsPage() {
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                      <td colSpan={7} className="py-8 text-center text-slate-400">
                         Loading expenses...
                       </td>
                     </tr>
                   ) : expenseData.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                      <td colSpan={7} className="py-8 text-center text-slate-400">
                         No expenses logged in this range.
                       </td>
                     </tr>
@@ -1151,6 +1162,9 @@ export default function ReportsPage() {
                           {new Date(e.date).toLocaleDateString()}
                         </td>
                         <td className="py-2.5 px-3 font-mono text-slate-600">{e.expenseNumber}</td>
+                        <td className="py-2.5 px-3 font-semibold text-slate-800">
+                          {e.recordedBy?.fullName || "Staff"}
+                        </td>
                         <td className="py-2.5 px-3 font-semibold text-slate-800">{e.category}</td>
                         <td className="py-2.5 px-3 text-slate-600">{e.description}</td>
                         <td className="py-2.5 px-3 text-slate-500">{e.paymentMethod}</td>
@@ -1163,7 +1177,7 @@ export default function ReportsPage() {
                 </tbody>
                 <tfoot className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300">
                   <tr>
-                    <td colSpan={5} className="py-3 px-3 text-right uppercase">
+                    <td colSpan={6} className="py-3 px-3 text-right uppercase">
                       Total Outflow:
                     </td>
                     <td className="py-3 px-3 text-right font-black text-sm text-rose-600">
@@ -1433,6 +1447,24 @@ export default function ReportsPage() {
               </div>
             )}
 
+            {/* Pending Manager Handovers Alert */}
+            {shiftSummary && shiftSummary.pendingHandoversCount > 0 && (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3.5 flex items-start space-x-3 text-amber-900">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 text-xs">
+                  <div className="font-black text-sm text-amber-950 flex items-center space-x-1.5">
+                    <span>💰 PENDING CASH HANDOVERS / مینیجر کی منظوری کے منتظر رجسٹرز</span>
+                    <span className="px-2 py-0.5 bg-amber-200 text-amber-900 rounded font-black text-xs">
+                      {shiftSummary.pendingHandoversCount} Pending
+                    </span>
+                  </div>
+                  <p className="mt-1 text-amber-800">
+                    {shiftSummary.pendingHandoversCount} کیشیئر شفٹس کا کیش ہینڈ اوور مینیجر کی تصدیق کا منتظر ہے۔ نیچے دیے گئے بٹن سے وصولی کی تصدیق کریں تاکہ کیشیئرز اگلی شفٹ شروع کر سکیں۔
+                  </p>
+                </div>
+              </div>
+            )}
+
             {shiftSummary && shiftSummary.closedShiftsCount > 0 && shiftSummary.totalDifference === 0 && (
               <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex items-center space-x-3 text-emerald-900">
                 <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -1456,20 +1488,22 @@ export default function ReportsPage() {
                     <th className="py-2.5 px-3 text-right">Expected Drawer</th>
                     <th className="py-2.5 px-3 text-right">Closing Drawer</th>
                     <th className="py-2.5 px-3 text-right">Difference (فرق)</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-right">Handover Cash</th>
+                    <th className="py-2.5 px-3 text-center">Handover Status</th>
+                    <th className="py-2.5 px-3 text-center">Register</th>
                     <th className="py-2.5 px-3">Remarks / Notes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-slate-400">
+                      <td colSpan={13} className="py-8 text-center text-slate-400">
                         Loading shift reports...
                       </td>
                     </tr>
                   ) : shiftData.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-slate-400">
+                      <td colSpan={13} className="py-8 text-center text-slate-400">
                         No shifts recorded for the selected period.
                       </td>
                     </tr>
@@ -1515,6 +1549,64 @@ export default function ReportsPage() {
                             ? (sh.cashDifference > 0 ? `+${formatCurrency(sh.cashDifference)}` : formatCurrency(sh.cashDifference))
                             : "-"}
                         </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-indigo-900">
+                          {sh.handover ? formatCurrency(sh.handover.handoverAmount) : "-"}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {sh.handover?.handoverStatus === "PENDING" ? (
+                            <div className="flex flex-col items-center space-y-1">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                PENDING
+                              </span>
+                              {(user?.role === "ADMIN" || user?.role === "MANAGER") && (
+                                <button
+                                  onClick={async () => {
+                                    if (
+                                      !confirm(
+                                        `Accept cash handover of ${formatCurrency(
+                                          sh.handover.handoverAmount
+                                        )} from ${sh.cashier?.fullName || "cashier"}?`
+                                      )
+                                    )
+                                      return;
+                                    try {
+                                      const res = await fetch("/api/pos/shifts/handover", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ shiftId: sh.id, action: "ACCEPT" }),
+                                      });
+                                      const d = await res.json();
+                                      if (d.success) {
+                                        alert("Handover accepted! کیش وصولی کی تصدیق ہو گئی ہے۔");
+                                        loadReportData();
+                                      } else {
+                                        alert(d.error);
+                                      }
+                                    } catch (err: any) {
+                                      alert(err.message);
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow-xs whitespace-nowrap"
+                                >
+                                  وصول پایا (Accept)
+                                </button>
+                              )}
+                            </div>
+                          ) : sh.handover?.handoverStatus === "ACCEPTED" ? (
+                            <div className="text-center">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                ACCEPTED
+                              </span>
+                              {sh.handover.handoverManagerName && (
+                                <span className="block text-[9px] text-slate-500">
+                                  By {sh.handover.handoverManagerName}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
                         <td className="py-2.5 px-3 text-center">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -1526,8 +1618,11 @@ export default function ReportsPage() {
                             {sh.status}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-slate-500 text-[11px] max-w-xs truncate" title={sh.notes || ""}>
-                          {sh.notes || "-"}
+                        <td
+                          className="py-2.5 px-3 text-slate-500 text-[11px] max-w-xs truncate"
+                          title={sh.handover?.cashierNotes || sh.notes || ""}
+                        >
+                          {sh.handover?.cashierNotes || sh.notes || "-"}
                         </td>
                       </tr>
                     ))

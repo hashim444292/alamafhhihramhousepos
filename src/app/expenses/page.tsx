@@ -25,14 +25,30 @@ export default function ExpensesPage() {
   const [description, setDescription] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [selectedCashier, setSelectedCashier] = useState<string>("ALL");
+  const [cashierList, setCashierList] = useState<any[]>([]);
 
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/expenses");
+      const url =
+        selectedCashier && selectedCashier !== "ALL"
+          ? `/api/expenses?cashierId=${selectedCashier}`
+          : "/api/expenses";
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setExpenses(data.expenses);
+        // Extract distinct recordedBy users
+        const usersMap = new Map();
+        data.expenses.forEach((e: any) => {
+          if (e.recordedBy?.id) {
+            usersMap.set(e.recordedBy.id, e.recordedBy);
+          }
+        });
+        if (usersMap.size > 0 && cashierList.length === 0) {
+          setCashierList(Array.from(usersMap.values()));
+        }
       }
     } catch (e) {
       console.error("Failed to load expenses:", e);
@@ -43,7 +59,7 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [selectedCashier]);
 
   const handleRecordExpense = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,15 +215,32 @@ export default function ExpensesPage() {
 
         {/* Expenses List & Summary (2 columns) */}
         <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 flex flex-col">
-          <div className="flex items-center justify-between border-b pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 gap-2">
             <div>
               <h3 className="font-bold text-base text-slate-900">Expenses Log</h3>
               <p className="text-xs text-slate-500">Total recorded expenses</p>
             </div>
-            <div className="text-right">
-              <span className="text-xs text-slate-400 font-medium">Total Outflow:</span>
-              <div className="text-lg font-black text-rose-600">
-                {formatCurrency(totalExpenseAmount)}
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-xs font-bold text-slate-600">فلٹر:</span>
+                <select
+                  value={selectedCashier}
+                  onChange={(e) => setSelectedCashier(e.target.value)}
+                  className="px-2.5 py-1 border border-slate-300 rounded-lg text-xs font-semibold bg-slate-50 focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="ALL">تمام کیشیئرز (All Cashiers)</option>
+                  {cashierList.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="text-right pl-2 border-l border-slate-200">
+                <span className="text-[11px] text-slate-400 font-medium">Total:</span>
+                <div className="text-base sm:text-lg font-black text-rose-600">
+                  {formatCurrency(totalExpenseAmount)}
+                </div>
               </div>
             </div>
           </div>
@@ -218,6 +251,7 @@ export default function ExpensesPage() {
                 <tr>
                   <th className="py-2.5 px-3">Date</th>
                   <th className="py-2.5 px-3">Category</th>
+                  <th className="py-2.5 px-3">Recorded By (کیشیئر)</th>
                   <th className="py-2.5 px-3">Description</th>
                   <th className="py-2.5 px-3">Mode</th>
                   <th className="py-2.5 px-3 text-right">Amount (Rs.)</th>
@@ -226,13 +260,13 @@ export default function ExpensesPage() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
                       Loading expenses...
                     </td>
                   </tr>
                 ) : expenses.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-400">
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
                       No expenses logged yet.
                     </td>
                   </tr>
@@ -246,6 +280,9 @@ export default function ExpensesPage() {
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
                           {exp.category}
                         </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-800">
+                        {exp.recordedBy?.fullName || "Staff"}
                       </td>
                       <td className="py-2.5 px-3 text-slate-700">{exp.description}</td>
                       <td className="py-2.5 px-3 text-slate-500 text-xs font-mono">

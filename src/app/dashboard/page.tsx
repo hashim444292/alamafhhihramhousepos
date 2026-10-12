@@ -16,6 +16,7 @@ import {
   Clock,
   Truck,
   Users,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
@@ -25,11 +26,49 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<any | null>(null);
   const [salesList, setSalesList] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any | null>(null);
+  const [pendingHandovers, setPendingHandovers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [paymentFilter, setPaymentFilter] = useState("ALL");
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+
+  const fetchPendingHandovers = async () => {
+    try {
+      const res = await fetch("/api/pos/shifts/handover");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.pendingHandovers) {
+          setPendingHandovers(data.pendingHandovers);
+        }
+      }
+    } catch (e) {
+      // safe fallback if not manager/admin
+    }
+  };
+
+  const handleAcceptHandover = async (shiftId: string) => {
+    try {
+      const res = await fetch("/api/pos/shifts/handover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shiftId,
+          action: "ACCEPT",
+          notes: "Received and verified by Manager on Dashboard",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("کیش ہینڈ اوور قبول کر لیا گیا ہے۔ اب کیشیئر نئی شفٹ اور بل بنا سکتا ہے۔ (Handover accepted, cashier unlocked)");
+        fetchPendingHandovers();
+      } else {
+        alert(data.error);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    }
+  };
 
   useEffect(() => {
     async function fetchDashboard() {
@@ -61,6 +100,7 @@ export default function DashboardPage() {
       }
     }
     fetchDashboard();
+    fetchPendingHandovers();
   }, []);
 
   const filteredSales = salesList.filter((s) => {
@@ -80,6 +120,74 @@ export default function DashboardPage() {
           Real-time retail turnover, COGS audit, operating expenses, and net margins
         </p>
       </div>
+
+      {/* Manager Cash Handover Acceptance Queue Widget */}
+      {pendingHandovers.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-3">
+            <div className="flex items-center space-x-2.5">
+              <span className="p-2 bg-amber-500 text-slate-950 rounded-xl font-black text-sm">
+                💰 {pendingHandovers.length}
+              </span>
+              <div>
+                <h3 className="font-black text-base text-amber-950">
+                  کیش ہینڈ اوور کی منظوری برائے مینیجر (Pending Cash Handover Approvals)
+                </h3>
+                <p className="text-xs text-amber-800">
+                  کیشیئرز کی کلوزنگ کی رقم دراز سے وصول کر کے منظوری دیں تاکہ وہ اگلی شفٹ شروع کر سکیں۔
+                </p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold bg-amber-200/80 text-amber-900 px-2.5 py-1 rounded-full shrink-0">
+              {pendingHandovers.length} رجسٹر تصدیق کے منتظر
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {pendingHandovers.map((sh: any) => (
+              <div
+                key={sh.id}
+                className="bg-white rounded-xl border border-amber-200 p-3.5 shadow-xs flex flex-col justify-between space-y-2.5"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">
+                      کیشیئر: {sh.cashier?.fullName || sh.cashier?.username}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      Shift #{sh.shiftNumber || "1"} · {sh.closedAt ? new Date(sh.closedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded border border-amber-300">
+                    PENDING
+                  </span>
+                </div>
+
+                <div className="bg-amber-50/50 p-2.5 rounded-lg border border-amber-100 flex justify-between items-center">
+                  <span className="text-xs text-amber-900 font-semibold">ہینڈ اوور رقم:</span>
+                  <span className="text-base font-black text-amber-900">
+                    {formatCurrency(sh.handover?.handoverAmount ?? sh.closingCash ?? 0)}
+                  </span>
+                </div>
+
+                {sh.handover?.cashierNotes && (
+                  <p className="text-[11px] text-slate-600 italic">
+                    نوٹ: "{sh.handover.cashierNotes}"
+                  </p>
+                )}
+
+                <button
+                  onClick={() => handleAcceptHandover(sh.id)}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow-xs flex items-center justify-center space-x-1"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>کیش وصول پایا (Accept Cash Handover)</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Real-time KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">

@@ -24,15 +24,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const [activeShift, lastClosedShift] = await Promise.all([
+    const [activeShift, lastClosedShift, handoverClearance] = await Promise.all([
       ShiftService.getCurrentShift(user.id),
       ShiftService.getLastClosedShift(),
+      ShiftService.checkCashierHandoverClearance(user.id),
     ]);
 
     return NextResponse.json({
       success: true,
       activeShift,
       hasActiveShift: !!activeShift,
+      handoverClearance,
       lastClosedShift: lastClosedShift
         ? {
             id: lastClosedShift.id,

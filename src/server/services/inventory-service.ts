@@ -13,10 +13,12 @@ export class InventoryService {
       }
 
       const previousStock = product.stockQuantity;
-      const newStock = previousStock + input.quantity;
+      const isOutward = ["STOCK_OUT_DAMAGE", "STOCK_OUT_STOLEN", "STOCK_OUT_SALE", "STOCK_OUT_RETURN"].includes(input.movementType);
+      const effectiveQty = isOutward ? -Math.abs(input.quantity) : input.quantity;
+      const newStock = previousStock + effectiveQty;
 
       if (newStock < 0) {
-        throw new Error(`Insufficient stock. Current stock: ${previousStock}, adjustment: ${input.quantity}`);
+        throw new Error(`Insufficient stock. Current stock: ${previousStock}, adjustment: ${effectiveQty}`);
       }
 
       // Update product stock
@@ -25,16 +27,23 @@ export class InventoryService {
         data: { stockQuantity: newStock },
       });
 
+      const referenceType =
+        input.movementType === "STOCK_OUT_DAMAGE"
+          ? "DAMAGE"
+          : input.movementType === "STOCK_OUT_STOLEN"
+          ? "STOLEN"
+          : "MANUAL";
+
       // Record movement
       const movement = await tx.stockMovement.create({
         data: {
           productId: input.productId,
           movementType: input.movementType,
-          quantity: input.quantity,
+          quantity: effectiveQty,
           previousStock,
           newStock,
-          referenceType: "MANUAL",
-          notes: input.notes || "Manual stock adjustment",
+          referenceType,
+          notes: input.notes || (isOutward ? "Reported loss / stock deduction" : "Manual stock adjustment"),
           performedById: userId,
         },
         include: {

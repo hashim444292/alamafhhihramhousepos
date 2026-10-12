@@ -25,6 +25,7 @@ export const StockAdjustmentSchema = z.object({
     "STOCK_IN_PO",
     "STOCK_OUT_SALE",
     "STOCK_OUT_DAMAGE",
+    "STOCK_OUT_STOLEN",
     "STOCK_OUT_RETURN",
     "MANUAL_ADJUSTMENT",
   ]),

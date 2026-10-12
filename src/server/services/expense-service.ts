@@ -30,9 +30,10 @@ export class ExpenseService {
     });
   }
 
-  static async getAll(category?: string, startDate?: Date, endDate?: Date) {
+  static async getAll(category?: string, startDate?: Date, endDate?: Date, cashierId?: string) {
     const where: any = {};
     if (category && category !== "ALL") where.category = category;
+    if (cashierId && cashierId !== "ALL") where.recordedById = cashierId;
     if (startDate || endDate) {
       where.date = {};
       if (startDate) where.date.gte = startDate;
@@ -43,7 +44,7 @@ export class ExpenseService {
       where,
       orderBy: { date: "desc" },
       include: {
-        recordedBy: { select: { fullName: true } },
+        recordedBy: { select: { id: true, fullName: true, username: true, role: true } },
       },
     });
   }

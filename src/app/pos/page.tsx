@@ -7,8 +7,10 @@ import { PaymentModal } from "@/components/pos/PaymentModal";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { ShiftModal } from "@/components/pos/ShiftModal";
 import { BarcodeScannerModal } from "@/components/pos/BarcodeScannerModal";
+import { QuickExpenseModal } from "@/components/pos/QuickExpenseModal";
+import { ReportLossModal } from "@/components/pos/ReportLossModal";
 import { usePosStore } from "@/store/pos-store";
-import { Clock, AlertCircle } from "lucide-react";
+import { Clock, AlertCircle, Receipt, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/format-utils";
 
 export default function PosPage() {
@@ -25,7 +27,13 @@ export default function PosPage() {
   >("CASH");
   const [isShiftOpen, setIsShiftOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
+  const [isLossOpen, setIsLossOpen] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState<any | null>(null);
+  const [handoverClearance, setHandoverClearance] = useState<{
+    isCleared: boolean;
+    pendingShift?: any;
+  } | null>(null);
 
   // Photoshop-Style Resizable & Lockable Workspace Panels State
   const containerRef = useRef<HTMLDivElement>(null);
@@ -151,21 +159,32 @@ export default function PosPage() {
     }
   };
 
+  const fetchCatalog = async () => {
+    try {
+      const prodRes = await fetch("/api/products");
+      const prodData = await prodRes.json();
+      if (prodData.success) {
+        setProducts(prodData.products);
+        setCategories(prodData.categories);
+      }
+    } catch (e) {
+      console.error("Failed to fetch products:", e);
+    }
+  };
+
   // Fetch products and active shift
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        const prodRes = await fetch("/api/products");
-        const prodData = await prodRes.json();
-        if (prodData.success) {
-          setProducts(prodData.products);
-          setCategories(prodData.categories);
-        }
+        await fetchCatalog();
 
         const shiftRes = await fetch("/api/pos/shifts");
         const shiftData = await shiftRes.json();
         if (shiftData.success) {
+          if (shiftData.handoverClearance) {
+            setHandoverClearance(shiftData.handoverClearance);
+          }
           if (shiftData.activeShift) {
             setActiveShift(shiftData.activeShift);
           } else {
@@ -188,6 +207,10 @@ export default function PosPage() {
   };
 
   const handleCameraScanSuccess = (decodedBarcode: string) => {
+    if (handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift) {
+      alert(`🚨 کیش ہینڈ اوور کی تصدیق باقی ہے! پچھلی شفٹ #${handoverClearance.pendingShift.shiftNumber} کا کیش مینیجر کے تصدیق کے انتظار میں ہے۔ اس وقت تک کوئی آئٹم اسکین نہیں ہو سکتا۔`);
+      return;
+    }
     if (!activeShift) {
       alert("برائے مہربانی پہلے شفٹ اوپن کریں! (Please open cashier shift first)");
       setIsShiftOpen(true);
@@ -210,6 +233,10 @@ export default function PosPage() {
   };
 
   const handleOpenPaymentWithMethod = (method: "CASH" | "CREDIT" = "CASH") => {
+    if (handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift) {
+      alert(`🚨 کیش ہینڈ اوور کی تصدیق باقی ہے! پچھلی شفٹ #${handoverClearance.pendingShift.shiftNumber} کا کیش (Rs. ${handoverClearance.pendingShift.handoverAmount}) مینیجر کی منظوری کا منتظر ہے۔ اس وقت تک انوائس یا بل نہیں بن سکتا۔ برائے مہربانی پہلے مینیجر سے تصدیق کرائیں۔`);
+      return;
+    }
     if (!activeShift) {
       alert("برائے مہربانی پہلے کیشئر شفٹ اوپن کریں! اس کے بغیر انوائس نہیں بن سکتی۔ (Please open cashier shift first)");
       setIsShiftOpen(true);
@@ -221,9 +248,38 @@ export default function PosPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
+      {/* Strict Handover Clearance Block Banner */}
+      {handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift && (
+        <div className="bg-rose-600 text-white px-3 sm:px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md border-b border-rose-700 animate-pulse">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-white shrink-0" />
+            <span>
+              🚨 <strong>مینیجر کی منظوری باقی ہے:</strong> پچھلی شفٹ #{handoverClearance.pendingShift.shiftNumber} کا کیش ہینڈ اوور ({formatCurrency(handoverClearance.pendingShift.handoverAmount)}) مینیجر کی تصدیق کا منتظر ہے۔ اس وقت تک نیا بل یا نئی شفٹ شروع نہیں ہو سکتی!
+            </span>
+          </div>
+          <button
+            onClick={async () => {
+              const res = await fetch("/api/pos/shifts");
+              const d = await res.json();
+              if (d.success && d.handoverClearance) {
+                setHandoverClearance(d.handoverClearance);
+                if (d.handoverClearance.isCleared) {
+                  alert("✅ مینیجر نے کیش ہینڈ اوور قبول کر لیا ہے! اب آپ رجسٹر شروع کر سکتے ہیں۔");
+                } else {
+                  alert("⚠️ مینیجر نے ابھی تک کیش ایکسیپٹ نہیں کیا۔ برائے مہربانی مینیجر سے تصدیق کرائیں۔");
+                }
+              }
+            }}
+            className="bg-white text-rose-700 hover:bg-rose-50 px-2.5 py-1 rounded-lg text-[11px] font-black shadow-xs shrink-0 ml-2"
+          >
+            ریفریش تصدیق (Recheck Status)
+          </button>
+        </div>
+      )}
+
       {/* Shift status strip */}
       {!activeShift ? (
-        <div className="bg-amber-500/90 backdrop-blur text-slate-950 px-4 py-1.5 text-xs font-semibold flex items-center justify-between shadow-xs border-b border-amber-600/30">
+        <div className="bg-amber-500/90 backdrop-blur text-slate-950 px-3 sm:px-4 py-1.5 text-xs font-semibold flex items-center justify-between shadow-xs border-b border-amber-600/30">
           <div className="flex items-center space-x-2">
             <AlertCircle className="w-4 h-4 text-slate-950 shrink-0" />
             <span className="truncate">
@@ -231,6 +287,24 @@ export default function PosPage() {
             </span>
           </div>
           <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsExpenseOpen(true)}
+              className="bg-amber-950/20 hover:bg-amber-950/30 text-slate-950 border border-amber-700/30 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              title="دکان کا روزمرہ خرچہ درج کریں"
+            >
+              <Receipt className="w-3.5 h-3.5 text-amber-950" />
+              <span>دکان خرچہ (Expense)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLossOpen(true)}
+              className="bg-rose-950/20 hover:bg-rose-950/30 text-rose-950 border border-rose-700/30 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              title="ٹوٹ پھوٹ یا چوری کی رپورٹ کریں"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-950" />
+              <span>ٹوٹ پھوٹ (Loss)</span>
+            </button>
             <button
               type="button"
               onClick={handleToggleLock}
@@ -267,6 +341,24 @@ export default function PosPage() {
             </span>
           </div>
           <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsExpenseOpen(true)}
+              className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              title="دکان کا روزمرہ خرچہ درج کریں"
+            >
+              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+              <span>دکان خرچہ (Expense)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLossOpen(true)}
+              className="bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              title="ٹوٹ پھوٹ یا چوری کی رپورٹ کریں"
+            >
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+              <span>ٹوٹ پھوٹ (Loss)</span>
+            </button>
             <button
               type="button"
               onClick={handleToggleLock}
@@ -428,6 +520,25 @@ export default function PosPage() {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScanSuccess={handleCameraScanSuccess}
+      />
+
+      {/* Quick Store Expense Modal for Cashier */}
+      <QuickExpenseModal
+        isOpen={isExpenseOpen}
+        onClose={() => setIsExpenseOpen(false)}
+        onExpenseAdded={() => {
+          // Re-fetch shift info if needed
+        }}
+      />
+
+      {/* Broken / Damaged / Stolen Loss Report Modal */}
+      <ReportLossModal
+        isOpen={isLossOpen}
+        products={products}
+        onClose={() => setIsLossOpen(false)}
+        onLossReported={() => {
+          fetchCatalog();
+        }}
       />
     </div>
   );

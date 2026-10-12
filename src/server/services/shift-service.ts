@@ -1,5 +1,10 @@
 import db from "@/lib/db";
 import { OpenShiftInput, CloseShiftInput } from "@/lib/validations/shift";
+import {
+  ShiftHandoverData,
+  parseShiftHandover,
+  formatShiftHandoverNotes,
+} from "@/types/shift-handover";
 
 export class ShiftService {
   static async getAllShifts(params?: {
@@ -50,8 +55,20 @@ export class ShiftService {
     let openShiftsCount = 0;
     let shortageCount = 0;
     let totalShortageAmount = 0;
+    let pendingHandoversCount = 0;
 
-    for (const s of shifts) {
+    const mappedShifts = shifts.map((s) => {
+      const handover = parseShiftHandover(s.notes);
+      if (handover?.handoverStatus === "PENDING") {
+        pendingHandoversCount++;
+      }
+      return {
+        ...s,
+        handover,
+      };
+    });
+
+    for (const s of mappedShifts) {
       totalOpeningCash += s.openingCash;
       totalSales += s.totalSalesAmount;
       totalExpectedCash += (s.systemExpectedCash || s.openingCash);
@@ -72,12 +89,13 @@ export class ShiftService {
     }
 
     return {
-      shifts,
+      shifts: mappedShifts,
       cashiers,
       summary: {
-        totalShifts: shifts.length,
+        totalShifts: mappedShifts.length,
         openShiftsCount,
         closedShiftsCount,
+        pendingHandoversCount,
         totalOpeningCash,
         totalSales,
         totalExpectedCash,
@@ -114,10 +132,117 @@ export class ShiftService {
     });
   }
 
+  static async checkCashierHandoverClearance(cashierId: string) {
+    const closedShifts = await db.shift.findMany({
+      where: { cashierId, status: "CLOSED" },
+      orderBy: { closedAt: "desc" },
+      take: 10,
+      include: { cashier: { select: { fullName: true, username: true } } },
+    });
+
+    for (const s of closedShifts) {
+      const handover = parseShiftHandover(s.notes);
+      if (handover && handover.handoverStatus === "PENDING") {
+        return {
+          isCleared: false,
+          pendingShift: {
+            id: s.id,
+            shiftNumber: s.shiftNumber || 1,
+            closedAt: s.closedAt,
+            closingCash: s.closingCash,
+            handoverAmount: handover.handoverAmount,
+            handoverStatus: handover.handoverStatus,
+            cashierName: s.cashier?.fullName || s.cashier?.username,
+          },
+        };
+      }
+    }
+
+    return { isCleared: true, pendingShift: null };
+  }
+
+  static async acceptShiftHandover(
+    shiftId: string,
+    manager: { id: string; fullName: string },
+    action: "ACCEPT" | "REJECT" = "ACCEPT",
+    managerNotes?: string
+  ) {
+    const shift = await db.shift.findUnique({
+      where: { id: shiftId },
+      include: { cashier: { select: { fullName: true, username: true } } },
+    });
+
+    if (!shift) {
+      throw new Error("Shift not found");
+    }
+
+    const existingHandover = parseShiftHandover(shift.notes);
+    const updatedHandover: ShiftHandoverData = {
+      handoverAmount: existingHandover?.handoverAmount ?? (shift.closingCash || 0),
+      handoverStatus: action === "ACCEPT" ? "ACCEPTED" : "REJECTED",
+      handoverTo: manager.fullName,
+      handoverManagerId: manager.id,
+      handoverManagerName: manager.fullName,
+      handoverAcceptedAt: new Date().toISOString(),
+      handoverNotes:
+        managerNotes ||
+        (action === "ACCEPT"
+          ? "کیش ہینڈ اوور وصول پایا اور تصدیق کی گئی۔ (Cash handover verified & accepted)"
+          : "کیش ہینڈ اوور مسترد کیا گیا۔ (Handover rejected)"),
+      cashierNotes: existingHandover?.cashierNotes || "",
+    };
+
+    const updated = await db.shift.update({
+      where: { id: shiftId },
+      data: {
+        notes: formatShiftHandoverNotes(updatedHandover),
+      },
+      include: { cashier: { select: { fullName: true, username: true } } },
+    });
+
+    return {
+      shift: {
+        ...updated,
+        handover: updatedHandover,
+      },
+    };
+  }
+
+  static async getPendingHandovers() {
+    const closedShifts = await db.shift.findMany({
+      where: { status: "CLOSED" },
+      orderBy: { closedAt: "desc" },
+      take: 50,
+      include: {
+        cashier: { select: { id: true, fullName: true, username: true } },
+      },
+    });
+
+    const pending = [];
+    for (const s of closedShifts) {
+      const handover = parseShiftHandover(s.notes);
+      if (handover && handover.handoverStatus === "PENDING") {
+        pending.push({
+          ...s,
+          handover,
+        });
+      }
+    }
+    return pending;
+  }
+
   static async openShift(input: OpenShiftInput, cashierId: string) {
     const existing = await this.getCurrentShift(cashierId);
     if (existing) {
       return existing;
+    }
+
+    // 1. Strict Gatekeeper: verify that cashier has no unaccepted handovers from previous shifts
+    const clearance = await this.checkCashierHandoverClearance(cashierId);
+    if (!clearance.isCleared && clearance.pendingShift) {
+      throw new Error(
+        `آخری شفٹ #${clearance.pendingShift.shiftNumber} کا کیش ہینڈ اوور (Rs. ${clearance.pendingShift.handoverAmount}) مینیجر کی منظوری (Acceptance) کا منتظر ہے۔ اس وقت تک نیا رجسٹر اوپن نہیں ہو سکتا۔ برائے مہربانی پہلے مینیجر سے تصدیق کرائیں۔ (Manager acceptance required for previous shift cash handover before opening new shift.)`
+      );
     }
 
     const lastShift = await db.shift.findFirst({
@@ -172,9 +297,38 @@ export class ShiftService {
 
     const totalSales = shift.sales.reduce((sum, s) => sum + s.totalAmount, 0);
 
-    // Expected cash in drawer = Opening cash + Cash collected from cash sales
-    const systemExpectedCash = shift.openingCash + cashSales;
+    // Calculate cash expenses recorded by this cashier during this shift
+    const cashExpenses = await db.expense.aggregate({
+      where: {
+        recordedById: cashierId,
+        paymentMethod: "CASH",
+        date: {
+          gte: shift.openedAt,
+        },
+      },
+      _sum: { amount: true },
+    });
+    const totalCashExpenses = cashExpenses._sum.amount || 0;
+
+    // Expected cash in drawer = Opening cash + Cash collected from cash sales - Cash paid for expenses
+    const systemExpectedCash = shift.openingCash + cashSales - totalCashExpenses;
     const cashDifference = input.closingCash - systemExpectedCash;
+
+    const handoverAmount =
+      input.handoverCash !== undefined && input.handoverCash !== null
+        ? input.handoverCash
+        : input.closingCash;
+
+    const handoverPayload: ShiftHandoverData = {
+      handoverAmount,
+      handoverStatus: "PENDING",
+      handoverTo: input.handoverTo || "Manager",
+      handoverManagerId: null,
+      handoverManagerName: null,
+      handoverAcceptedAt: null,
+      handoverNotes: null,
+      cashierNotes: input.notes || "",
+    };
 
     const closedShift = await db.shift.update({
       where: { id: input.shiftId },
@@ -186,7 +340,7 @@ export class ShiftService {
         totalSalesAmount: totalSales,
         totalTransactions: shift.sales.length,
         status: "CLOSED",
-        notes: input.notes || shift.notes,
+        notes: formatShiftHandoverNotes(handoverPayload),
       },
       include: {
         cashier: { select: { fullName: true, username: true } },
@@ -199,6 +353,8 @@ export class ShiftService {
         cashSales,
         cardSales,
         mobileSales,
+        cashExpenses: totalCashExpenses,
+        handover: handoverPayload,
       },
     };
   }

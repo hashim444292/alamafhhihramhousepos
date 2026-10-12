@@ -1,5 +1,6 @@
 import db from "@/lib/db";
 import { CheckoutInput } from "@/lib/validations/sales";
+import { ShiftService } from "@/server/services/shift-service";
 
 export class SalesService {
   private static async generateInvoiceNumber(): Promise<string> {
@@ -54,7 +55,14 @@ export class SalesService {
         balanceDue = Math.max(0, input.totalAmount - input.amountTendered);
       }
 
-      // 4. Validate that an active shift is open for this cashier
+      // 4. Validate handover clearance and active shift for this cashier
+      const clearance = await ShiftService.checkCashierHandoverClearance(cashierId);
+      if (!clearance.isCleared && clearance.pendingShift) {
+        throw new Error(
+          `آخری شفٹ #${clearance.pendingShift.shiftNumber} کا کیش ہینڈ اوور (Rs. ${clearance.pendingShift.handoverAmount}) مینیجر کی منظوری (Acceptance) کا منتظر ہے۔ اس وقت تک نیا بل نہیں بن سکتا۔ برائے مہربانی پہلے مینیجر سے تصدیق کرائیں۔ (Manager acceptance required for previous shift cash handover before processing bills.)`
+        );
+      }
+
       let resolvedShiftId = input.shiftId;
       if (!resolvedShiftId) {
         const activeShift = await tx.shift.findFirst({
