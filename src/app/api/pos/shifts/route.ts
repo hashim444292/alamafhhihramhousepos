@@ -24,10 +24,13 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const isPrivileged = user.role === "ADMIN" || user.role === "MANAGER";
     const [activeShift, lastClosedShift, handoverClearance] = await Promise.all([
       ShiftService.getCurrentShift(user.id),
       ShiftService.getLastClosedShift(),
-      ShiftService.checkCashierHandoverClearance(user.id),
+      isPrivileged
+        ? Promise.resolve({ isCleared: true, pendingShift: null })
+        : ShiftService.checkCashierHandoverClearance(user.id),
     ]);
 
     return NextResponse.json({

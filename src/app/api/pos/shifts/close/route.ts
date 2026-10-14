@@ -17,7 +17,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await ShiftService.closeShift(parsed.data, user.id);
+    const result = await ShiftService.closeShift(
+      parsed.data,
+      user.id,
+      user.role,
+      user.fullName
+    );
     return NextResponse.json({
       success: true,
       message: "Shift closed and Z-report generated",

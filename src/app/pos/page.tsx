@@ -10,10 +10,12 @@ import { BarcodeScannerModal } from "@/components/pos/BarcodeScannerModal";
 import { QuickExpenseModal } from "@/components/pos/QuickExpenseModal";
 import { ReportLossModal } from "@/components/pos/ReportLossModal";
 import { usePosStore } from "@/store/pos-store";
+import { useAuthStore } from "@/store/auth-store";
 import { Clock, AlertCircle, Receipt, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/format-utils";
 
 export default function PosPage() {
+  const { user } = useAuthStore();
   const { receiptWidth, activeShift, setActiveShift, addItem } = usePosStore();
 
   const [products, setProducts] = useState<any[]>([]);
@@ -207,7 +209,7 @@ export default function PosPage() {
   };
 
   const handleCameraScanSuccess = (decodedBarcode: string) => {
-    if (handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift) {
+    if (user?.role === "CASHIER" && handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift) {
       alert(`🚨 کیش ہینڈ اوور کی تصدیق باقی ہے! پچھلی شفٹ #${handoverClearance.pendingShift.shiftNumber} کا کیش مینیجر کے تصدیق کے انتظار میں ہے۔ اس وقت تک کوئی آئٹم اسکین نہیں ہو سکتا۔`);
       return;
     }
@@ -233,7 +235,7 @@ export default function PosPage() {
   };
 
   const handleOpenPaymentWithMethod = (method: "CASH" | "CREDIT" = "CASH") => {
-    if (handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift) {
+    if (user?.role === "CASHIER" && handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift) {
       alert(`🚨 کیش ہینڈ اوور کی تصدیق باقی ہے! پچھلی شفٹ #${handoverClearance.pendingShift.shiftNumber} کا کیش (Rs. ${handoverClearance.pendingShift.handoverAmount}) مینیجر کی منظوری کا منتظر ہے۔ اس وقت تک انوائس یا بل نہیں بن سکتا۔ برائے مہربانی پہلے مینیجر سے تصدیق کرائیں۔`);
       return;
     }
@@ -248,8 +250,8 @@ export default function PosPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
-      {/* Strict Handover Clearance Block Banner */}
-      {handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift && (
+      {/* Strict Handover Clearance Block Banner (Applies only to Cashier) */}
+      {user?.role === "CASHIER" && handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift && (
         <div className="bg-rose-600 text-white px-3 sm:px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md border-b border-rose-700 animate-pulse">
           <div className="flex items-center space-x-2">
             <AlertTriangle className="w-4 h-4 text-white shrink-0" />

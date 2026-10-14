@@ -286,27 +286,36 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                     />
                   </div>
 
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="block text-xs font-bold text-indigo-900">
-                        Handover Cash to Manager (مینیجر کو دیا جانے والا کیش - Rs.)
-                      </label>
-                      <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                        مینیجر تصدیق کرے گا
-                      </span>
+                  {user?.role === "CASHIER" ? (
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold text-indigo-900">
+                          Handover Cash to Manager (مینیجر کو دیا جانے والا کیش - Rs.)
+                        </label>
+                        <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                          مینیجر تصدیق کرے گا
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        step="any"
+                        value={handoverCashInput || ""}
+                        onChange={(e) => setHandoverCashInput(Number(e.target.value))}
+                        placeholder="مینیجر کو دی جانے والی رقم..."
+                        className="w-full px-3 py-2 border border-indigo-300 bg-indigo-50/30 rounded-lg text-sm font-black text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                      />
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        جب تک مینیجر یہ کیش اپنے پورٹل سے قبول (Accept) نہیں کرے گا، اگلی شفٹ شروع نہیں ہو سکے گی۔
+                      </p>
                     </div>
-                    <input
-                      type="number"
-                      step="any"
-                      value={handoverCashInput || ""}
-                      onChange={(e) => setHandoverCashInput(Number(e.target.value))}
-                      placeholder="مینیجر کو دی جانے والی رقم..."
-                      className="w-full px-3 py-2 border border-indigo-300 bg-indigo-50/30 rounded-lg text-sm font-black text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                    <p className="text-[10px] text-slate-500 mt-1">
-                      جب تک مینیجر یہ کیش اپنے پورٹل سے قبول (Accept) نہیں کرے گا، اگلی شفٹ شروع نہیں ہو سکے گی۔
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs text-emerald-950 flex items-center space-x-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <strong>{user?.role === "ADMIN" ? "ایڈمن" : "مینیجر"} ڈے آف (Day End):</strong> براہِ راست مکمل ہو جائے گا۔ کسی منظوری یا ریکویسٹ کی ضرورت نہیں ہے۔
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -334,8 +343,8 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
           ) : (
             /* Open Shift Form with Cashier Handover Reconciliation */
             <div className="space-y-4">
-              {/* Strict Manager Handover Gatekeeper Alert */}
-              {handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift && (
+              {/* Strict Manager Handover Gatekeeper Alert (Applies ONLY to Cashiers) */}
+              {user?.role === "CASHIER" && handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift && (
                 <div className="bg-rose-50 border-2 border-rose-500 rounded-xl p-4 space-y-2.5 shadow-sm animate-pulse">
                   <div className="flex items-center space-x-2 text-rose-800 font-black text-sm">
                     <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
@@ -462,17 +471,17 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
               </div>
 
               <button
-                disabled={loading || (!!handoverClearance && !handoverClearance.isCleared)}
+                disabled={loading || (user?.role === "CASHIER" && !!handoverClearance && !handoverClearance.isCleared)}
                 onClick={handleOpenShift}
                 className={`w-full py-3 text-white font-bold rounded-xl text-sm transition shadow-md flex items-center justify-center space-x-1.5 ${
-                  handoverClearance && !handoverClearance.isCleared
+                  user?.role === "CASHIER" && handoverClearance && !handoverClearance.isCleared
                     ? "bg-slate-400 cursor-not-allowed opacity-90 shadow-none"
                     : "bg-emerald-600 hover:bg-emerald-500"
                 }`}
               >
                 <Clock className="w-4 h-4" />
                 <span>
-                  {handoverClearance && !handoverClearance.isCleared
+                  {user?.role === "CASHIER" && handoverClearance && !handoverClearance.isCleared
                     ? "🚫 مینیجر سے تصدیق کرائیں (Pending Clearance)"
                     : loading
                     ? "اوپن ہو رہا ہے..."

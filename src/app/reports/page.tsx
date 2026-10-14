@@ -1620,7 +1620,7 @@ export default function ReportsPage() {
                           {sh.handover ? formatCurrency(sh.handover.handoverAmount) : "-"}
                         </td>
                         <td className="py-2.5 px-3 text-center">
-                          {sh.handover?.handoverStatus === "PENDING" ? (
+                          {sh.handover?.handoverStatus === "PENDING" && (sh.cashier?.role === "CASHIER" || !sh.cashier?.role) ? (
                             <div className="flex flex-col items-center space-y-1">
                               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                                 PENDING
@@ -1669,6 +1669,12 @@ export default function ReportsPage() {
                                   By {sh.handover.handoverManagerName}
                                 </span>
                               )}
+                            </div>
+                          ) : sh.cashier?.role === "ADMIN" || sh.cashier?.role === "MANAGER" ? (
+                            <div className="text-center">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                                {sh.cashier.role}
+                              </span>
                             </div>
                           ) : (
                             <span className="text-slate-400">-</span>

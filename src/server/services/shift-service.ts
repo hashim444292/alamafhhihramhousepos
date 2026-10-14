@@ -36,7 +36,7 @@ export class ShiftService {
         take: limit,
         orderBy: { openedAt: "desc" },
         include: {
-          cashier: { select: { id: true, fullName: true, username: true } },
+          cashier: { select: { id: true, fullName: true, username: true, role: true } },
           _count: { select: { sales: true } },
         },
       }),
@@ -59,7 +59,7 @@ export class ShiftService {
 
     const mappedShifts = shifts.map((s) => {
       const handover = parseShiftHandover(s.notes);
-      if (handover?.handoverStatus === "PENDING") {
+      if (handover?.handoverStatus === "PENDING" && (s.cashier?.role === "CASHIER" || !s.cashier?.role)) {
         pendingHandoversCount++;
       }
       return {
@@ -133,11 +133,21 @@ export class ShiftService {
   }
 
   static async checkCashierHandoverClearance(cashierId: string) {
+    const user = await db.user.findUnique({
+      where: { id: cashierId },
+      select: { id: true, role: true, fullName: true },
+    });
+
+    // Managers and Admins never need handover clearance or approval from anyone
+    if (!user || user.role === "ADMIN" || user.role === "MANAGER") {
+      return { isCleared: true, pendingShift: null };
+    }
+
     const closedShifts = await db.shift.findMany({
       where: { cashierId, status: "CLOSED" },
       orderBy: { closedAt: "desc" },
       take: 10,
-      include: { cashier: { select: { fullName: true, username: true } } },
+      include: { cashier: { select: { fullName: true, username: true, role: true } } },
     });
 
     for (const s of closedShifts) {
@@ -210,11 +220,16 @@ export class ShiftService {
 
   static async getPendingHandovers() {
     const closedShifts = await db.shift.findMany({
-      where: { status: "CLOSED" },
+      where: {
+        status: "CLOSED",
+        cashier: {
+          role: "CASHIER", // Only cashiers have handover approval requests
+        },
+      },
       orderBy: { closedAt: "desc" },
       take: 50,
       include: {
-        cashier: { select: { id: true, fullName: true, username: true } },
+        cashier: { select: { id: true, fullName: true, username: true, role: true } },
       },
     });
 
@@ -264,7 +279,12 @@ export class ShiftService {
     });
   }
 
-  static async closeShift(input: CloseShiftInput, cashierId: string) {
+  static async closeShift(
+    input: CloseShiftInput,
+    cashierId: string,
+    userRole?: string,
+    userFullName?: string
+  ) {
     const shift = await db.shift.findUnique({
       where: { id: input.shiftId },
       include: {
@@ -281,6 +301,18 @@ export class ShiftService {
     if (shift.status === "CLOSED") {
       throw new Error("Shift is already closed");
     }
+
+    let role = userRole;
+    let name = userFullName;
+    if (!role) {
+      const dbUser = await db.user.findUnique({
+        where: { id: cashierId },
+        select: { role: true, fullName: true },
+      });
+      role = dbUser?.role || "CASHIER";
+      name = dbUser?.fullName || "Staff";
+    }
+    const isPrivileged = role === "ADMIN" || role === "MANAGER";
 
     // Calculate sales breakdown for this shift
     const cashSales = shift.sales
@@ -319,16 +351,28 @@ export class ShiftService {
         ? input.handoverCash
         : input.closingCash;
 
-    const handoverPayload: ShiftHandoverData = {
-      handoverAmount,
-      handoverStatus: "PENDING",
-      handoverTo: input.handoverTo || "Manager",
-      handoverManagerId: null,
-      handoverManagerName: null,
-      handoverAcceptedAt: null,
-      handoverNotes: null,
-      cashierNotes: input.notes || "",
-    };
+    // Admin & Manager do not need manager approval; auto-accepted directly without pending approval requests
+    const handoverPayload: ShiftHandoverData = isPrivileged
+      ? {
+          handoverAmount,
+          handoverStatus: "ACCEPTED",
+          handoverTo: `Self (${role})`,
+          handoverManagerId: cashierId,
+          handoverManagerName: name || role,
+          handoverAcceptedAt: new Date().toISOString(),
+          handoverNotes: `Direct shift close by ${role} (No manager approval needed)`,
+          cashierNotes: input.notes || "",
+        }
+      : {
+          handoverAmount,
+          handoverStatus: "PENDING",
+          handoverTo: input.handoverTo || "Manager",
+          handoverManagerId: null,
+          handoverManagerName: null,
+          handoverAcceptedAt: null,
+          handoverNotes: null,
+          cashierNotes: input.notes || "",
+        };
 
     const closedShift = await db.shift.update({
       where: { id: input.shiftId },
