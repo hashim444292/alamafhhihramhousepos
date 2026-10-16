@@ -102,7 +102,7 @@ export default function InventoryPage() {
   const fetchInventory = async (silent: boolean = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/products", { cache: "no-store" });
       const data = await res.json();
       if (data.success) {
         setProducts(data.products);
@@ -110,7 +110,7 @@ export default function InventoryPage() {
       }
 
       // Fetch Suppliers list for purchase orders
-      const supRes = await fetch("/api/suppliers");
+      const supRes = await fetch("/api/suppliers", { cache: "no-store" });
       const supData = await supRes.json();
       if (supData.success) {
         setSuppliers(supData.suppliers);
@@ -171,6 +171,7 @@ export default function InventoryPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           supplierId: purchaseSupplierId,
+          poNumber: purchaseBillNo,
           billNumber: purchaseBillNo,
           items: [
             {
@@ -835,7 +836,7 @@ export default function InventoryPage() {
                   <option value="">-- وینڈر منتخب کریں (Select Vendor) --</option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} {s.company ? `(${s.company})` : ""} - Baqaya: Rs. {s.currentBalance.toFixed(0)}
+                      {s.name} {s.companyName ? `(${s.companyName})` : ""} - Baqaya: Rs. {(s.currentBalance || 0).toFixed(0)}
                     </option>
                   ))}
                 </select>
@@ -860,13 +861,21 @@ export default function InventoryPage() {
                   <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
                   <select
                     value={purchasePaymentMethod}
-                    onChange={(e) => setPurchasePaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white"
+                    onChange={(e) => {
+                      const m = e.target.value;
+                      setPurchasePaymentMethod(m);
+                      if (m === "CREDIT") {
+                        setPurchasePaidAmount(0);
+                      } else if (purchasePaidAmount === 0) {
+                        setPurchasePaidAmount(purchaseQty * purchaseCost);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs bg-white font-semibold"
                   >
                     <option value="CASH">Cash (نقد کیش)</option>
                     <option value="BANK_TRANSFER">Bank Transfer (بینک)</option>
                     <option value="CHEQUE">Cheque (چیک)</option>
-                    <option value="CREDIT">Full Credit / Udhaar (مکمل ادھار)</option>
+                    <option value="CREDIT">Full Credit / Udhaar (مکمل ادھار - Rs. 0 Paid)</option>
                   </select>
                 </div>
 
@@ -882,7 +891,9 @@ export default function InventoryPage() {
                     onChange={(e) => {
                       const q = Number(e.target.value);
                       setPurchaseQty(q);
-                      setPurchasePaidAmount(q * purchaseCost);
+                      if (purchasePaymentMethod !== "CREDIT") {
+                        setPurchasePaidAmount(q * purchaseCost);
+                      }
                     }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-slate-900 bg-white"
                   />
@@ -901,7 +912,9 @@ export default function InventoryPage() {
                     onChange={(e) => {
                       const c = Number(e.target.value);
                       setPurchaseCost(c);
-                      setPurchasePaidAmount(purchaseQty * c);
+                      if (purchasePaymentMethod !== "CREDIT") {
+                        setPurchasePaidAmount(purchaseQty * c);
+                      }
                     }}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-emerald-800 bg-white"
                   />
@@ -930,7 +943,50 @@ export default function InventoryPage() {
                   />
                 </div>
 
-                <div className="flex justify-between font-bold pt-1 border-t border-slate-200 text-xs">
+                {/* Quick Payment Preset Pills */}
+                <div className="flex gap-1.5 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPurchasePaidAmount(0);
+                      setPurchasePaymentMethod("CREDIT");
+                    }}
+                    className={`flex-1 py-1 px-1.5 rounded-lg text-[10px] font-bold border transition ${
+                      purchasePaidAmount === 0
+                        ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                        : "bg-white text-amber-800 border-amber-300 hover:bg-amber-50"
+                    }`}
+                  >
+                    📝 مکمل ادھار (0 Paid)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const half = Math.round((purchaseQty * purchaseCost) / 2);
+                      setPurchasePaidAmount(half);
+                      if (purchasePaymentMethod === "CREDIT") setPurchasePaymentMethod("CASH");
+                    }}
+                    className="flex-1 py-1 px-1.5 rounded-lg text-[10px] font-bold bg-white text-blue-800 border border-blue-300 hover:bg-blue-50 transition"
+                  >
+                    ⚖️ 50% ایڈوانس
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPurchasePaidAmount(purchaseQty * purchaseCost);
+                      if (purchasePaymentMethod === "CREDIT") setPurchasePaymentMethod("CASH");
+                    }}
+                    className={`flex-1 py-1 px-1.5 rounded-lg text-[10px] font-bold border transition ${
+                      purchasePaidAmount === purchaseQty * purchaseCost && purchaseQty * purchaseCost > 0
+                        ? "bg-emerald-600 text-white border-emerald-700 shadow-xs"
+                        : "bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+                    }`}
+                  >
+                    💰 100% نقد ادا
+                  </button>
+                </div>
+
+                <div className="flex justify-between font-bold pt-1.5 border-t border-slate-200 text-xs">
                   <span className="text-rose-700">Remaining to Vendor Khata (بقایا ادھار):</span>
                   <span className="text-rose-700 font-extrabold">
                     Rs. {Math.max(0, purchaseQty * purchaseCost - purchasePaidAmount).toFixed(2)}

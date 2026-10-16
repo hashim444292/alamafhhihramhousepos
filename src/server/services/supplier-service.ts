@@ -37,17 +37,44 @@ export class SupplierService {
       ];
     }
 
-    return db.supplier.findMany({
+    const suppliers = await db.supplier.findMany({
       where,
       orderBy: { name: "asc" },
       include: {
         _count: { select: { purchaseOrders: true, ledgerEntries: true } },
+        purchaseOrders: {
+          select: {
+            id: true,
+            totalAmount: true,
+            paidAmount: true,
+            balanceAmount: true,
+            status: true,
+          },
+        },
       },
+    });
+
+    return suppliers.map((s) => {
+      const totalPurchased = s.purchaseOrders.reduce((sum, po) => sum + (po.totalAmount || 0), 0);
+      const totalPaid = s.purchaseOrders.reduce((sum, po) => sum + (po.paidAmount || 0), 0);
+      const totalPending = s.purchaseOrders.reduce((sum, po) => sum + (po.balanceAmount || 0), 0);
+      const clearedBillsCount = s.purchaseOrders.filter((po) => (po.balanceAmount ?? 0) <= 0.01).length;
+      const pendingBillsCount = s.purchaseOrders.filter((po) => (po.balanceAmount ?? 0) > 0.01).length;
+
+      return {
+        ...s,
+        totalPurchased,
+        totalPaid,
+        totalPending,
+        totalBillsCount: s.purchaseOrders.length,
+        clearedBillsCount,
+        pendingBillsCount,
+      };
     });
   }
 
   static async getById(id: string) {
-    return db.supplier.findUnique({
+    const s = await db.supplier.findUnique({
       where: { id },
       include: {
         purchaseOrders: {
@@ -63,6 +90,24 @@ export class SupplierService {
         },
       },
     });
+
+    if (!s) return null;
+
+    const totalPurchased = s.purchaseOrders.reduce((sum, po) => sum + (po.totalAmount || 0), 0);
+    const totalPaid = s.purchaseOrders.reduce((sum, po) => sum + (po.paidAmount || 0), 0);
+    const totalPending = s.purchaseOrders.reduce((sum, po) => sum + (po.balanceAmount || 0), 0);
+    const clearedBillsCount = s.purchaseOrders.filter((po) => (po.balanceAmount ?? 0) <= 0.01).length;
+    const pendingBillsCount = s.purchaseOrders.filter((po) => (po.balanceAmount ?? 0) > 0.01).length;
+
+    return {
+      ...s,
+      totalPurchased,
+      totalPaid,
+      totalPending,
+      totalBillsCount: s.purchaseOrders.length,
+      clearedBillsCount,
+      pendingBillsCount,
+    };
   }
 
   static async create(data: SupplierInput) {
@@ -114,9 +159,15 @@ export class SupplierService {
 
       const balanceAmount = Math.max(0, input.totalAmount - input.paidAmount);
       const billNumber =
-        input.poNumber || `BILL-${Date.now().toString().slice(-6)}`;
+        input.poNumber || (input as any).billNumber || `BILL-${Date.now().toString().slice(-6)}`;
 
       const billDueDate = input.dueDate ? new Date(input.dueDate) : null;
+      const poStatus =
+        balanceAmount <= 0.01
+          ? "PAID"
+          : input.paidAmount > 0
+          ? "PARTIAL"
+          : "UNPAID";
 
       // 1. Create Purchase Order / Bill record
       const po = await tx.purchaseOrder.create({
@@ -128,7 +179,7 @@ export class SupplierService {
           balanceAmount,
           dueDate: billDueDate,
           paymentMethod: input.paymentMethod,
-          status: "RECEIVED",
+          status: poStatus,
           notes: input.notes,
           items: {
             create: input.items.map((item) => ({
@@ -236,7 +287,8 @@ export class SupplierService {
     amount: number,
     paymentMethod = "CASH",
     notes = "Payment to vendor",
-    nextDueDate?: string | Date | null
+    nextDueDate?: string | Date | null,
+    targetPoId?: string
   ) {
     return db.$transaction(async (tx) => {
       const supplier = await tx.supplier.findUnique({
@@ -262,30 +314,62 @@ export class SupplierService {
 
       // Allocate payment against pending purchase orders to keep Purchase Order balanceAmount 100% synced with ledger
       let remainingToApply = amount;
-      const pendingPOs = await tx.purchaseOrder.findMany({
-        where: {
-          supplierId,
-          balanceAmount: { gt: 0 },
-        },
-        orderBy: { orderDate: "asc" },
-      });
 
-      for (const po of pendingPOs) {
-        if (remainingToApply <= 0) break;
-        const settle = Math.min(po.balanceAmount, remainingToApply);
-        const newPaid = po.paidAmount + settle;
-        const newBal = po.balanceAmount - settle;
+      // If a specific target PO was chosen to pay, settle it first!
+      if (targetPoId && remainingToApply > 0) {
+        const targetPO = await tx.purchaseOrder.findUnique({
+          where: { id: targetPoId },
+        });
+        if (targetPO && targetPO.balanceAmount > 0) {
+          const settle = Math.min(targetPO.balanceAmount, remainingToApply);
+          const newPaid = targetPO.paidAmount + settle;
+          const newBal = targetPO.balanceAmount - settle;
+          const newStatus = newBal <= 0.01 ? "PAID" : "PARTIAL";
 
-        await tx.purchaseOrder.update({
-          where: { id: po.id },
-          data: {
-            paidAmount: newPaid,
-            balanceAmount: newBal,
-            dueDate: newBal <= 0 ? null : po.dueDate,
+          await tx.purchaseOrder.update({
+            where: { id: targetPO.id },
+            data: {
+              paidAmount: newPaid,
+              balanceAmount: Math.max(0, newBal),
+              dueDate: newBal <= 0.01 ? null : targetPO.dueDate,
+              status: newStatus,
+            },
+          });
+
+          remainingToApply -= settle;
+        }
+      }
+
+      // Settle any remaining payment against pending purchase orders in FIFO order
+      if (remainingToApply > 0) {
+        const pendingPOs = await tx.purchaseOrder.findMany({
+          where: {
+            supplierId,
+            balanceAmount: { gt: 0 },
+            ...(targetPoId ? { id: { not: targetPoId } } : {}),
           },
+          orderBy: { orderDate: "asc" },
         });
 
-        remainingToApply -= settle;
+        for (const po of pendingPOs) {
+          if (remainingToApply <= 0) break;
+          const settle = Math.min(po.balanceAmount, remainingToApply);
+          const newPaid = po.paidAmount + settle;
+          const newBal = po.balanceAmount - settle;
+          const newStatus = newBal <= 0.01 ? "PAID" : "PARTIAL";
+
+          await tx.purchaseOrder.update({
+            where: { id: po.id },
+            data: {
+              paidAmount: newPaid,
+              balanceAmount: Math.max(0, newBal),
+              dueDate: newBal <= 0.01 ? null : po.dueDate,
+              status: newStatus,
+            },
+          });
+
+          remainingToApply -= settle;
+        }
       }
 
       const supplierUpdateData: any = { currentBalance: newBalance };

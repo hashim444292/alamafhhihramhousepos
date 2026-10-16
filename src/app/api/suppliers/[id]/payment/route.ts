@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { SupplierService } from "@/server/services/supplier-service";
 import { getAuthUser, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-middleware";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -12,7 +15,7 @@ export async function POST(
 
   try {
     const body = await req.json();
-    const { amount, paymentMethod, notes, nextDueDate } = body;
+    const { amount, paymentMethod, notes, nextDueDate, targetPoId } = body;
 
     if (!amount || amount <= 0) {
       return NextResponse.json({ success: false, error: "Valid amount is required" }, { status: 400 });
@@ -23,7 +26,8 @@ export async function POST(
       amount,
       paymentMethod || "CASH",
       notes || "Vendor bill payment",
-      nextDueDate
+      nextDueDate,
+      targetPoId
     );
 
     return NextResponse.json({ success: true, ...result });
