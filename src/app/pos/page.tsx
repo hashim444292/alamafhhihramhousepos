@@ -250,7 +250,7 @@ export default function PosPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
       {/* Strict Handover Clearance Block Banner (Applies only to Cashier) */}
       {user?.role === "CASHIER" && handoverClearance && !handoverClearance.isCleared && handoverClearance.pendingShift && (
         <div className="bg-rose-600 text-white px-3 sm:px-4 py-2 text-xs font-bold flex items-center justify-between shadow-md border-b border-rose-700 animate-pulse">
@@ -282,18 +282,18 @@ export default function PosPage() {
 
       {/* Shift status strip */}
       {!activeShift ? (
-        <div className="bg-amber-500/90 backdrop-blur text-slate-950 px-3 sm:px-4 py-1.5 text-xs font-semibold flex flex-wrap items-center justify-between gap-1.5 shadow-xs border-b border-amber-600/30">
+        <div className="bg-amber-500/90 backdrop-blur text-slate-950 px-3 sm:px-4 py-1 text-xs font-semibold flex flex-wrap items-center justify-between gap-1 shadow-xs border-b border-amber-600/30 shrink-0">
           <div className="flex items-center space-x-2 min-w-0">
             <AlertCircle className="w-4 h-4 text-slate-950 shrink-0" />
             <span className="truncate text-[11px] sm:text-xs">
               کوئی کیشئر شفٹ اوپن نہیں ہے۔ برائے مہربانی سیلز شروع کرنے سے پہلے شفٹ اوپن کریں۔
             </span>
           </div>
-          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setIsExpenseOpen(true)}
-              className="bg-amber-950/20 hover:bg-amber-950/30 text-slate-950 border border-amber-700/30 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              className="bg-amber-950/20 hover:bg-amber-950/30 text-slate-950 border border-amber-700/30 px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
               title="دکان کا روزمرہ خرچہ درج کریں"
             >
               <Receipt className="w-3.5 h-3.5 text-amber-950" />
@@ -302,7 +302,7 @@ export default function PosPage() {
             <button
               type="button"
               onClick={() => setIsLossOpen(true)}
-              className="bg-rose-950/20 hover:bg-rose-950/30 text-rose-950 border border-rose-700/30 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              className="bg-rose-950/20 hover:bg-rose-950/30 text-rose-950 border border-rose-700/30 px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
               title="ٹوٹ پھوٹ یا چوری کی رپورٹ کریں"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-rose-950" />
@@ -311,18 +311,18 @@ export default function PosPage() {
             <button
               type="button"
               onClick={handleToggleLock}
-              className={`hidden lg:flex px-2.5 py-1 rounded-lg text-xs font-bold transition items-center space-x-1 border shadow-xs ${
+              className={`hidden lg:flex px-2 py-0.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-bold transition items-center space-x-1 border shadow-xs ${
                 isLocked
                   ? "bg-slate-900/90 text-amber-200 border-amber-900/40 hover:bg-slate-900"
                   : "bg-amber-400 text-slate-950 border-amber-500 hover:bg-amber-300"
               }`}
               title={isLocked ? "Panels Locked (Click to enable resizing)" : "Panels Resizable (Click to lock)"}
             >
-              <span>{isLocked ? "🔒 Panels Locked" : "🔓 Resize Panels"}</span>
+              <span>{isLocked ? "🔒 Locked" : "🔓 Resize"}</span>
             </button>
             <button
               onClick={() => setIsShiftOpen(true)}
-              className="bg-slate-950 text-white hover:bg-slate-900 px-2.5 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
+              className="bg-slate-950 text-white hover:bg-slate-900 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
             >
               <Clock className="w-3.5 h-3.5" />
               <span>Open Shift (اوپن شفٹ)</span>
@@ -330,7 +330,7 @@ export default function PosPage() {
           </div>
         </div>
       ) : (
-        <div className="bg-slate-900 text-white px-3 sm:px-4 py-1 text-xs font-medium flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-800 shadow-xs">
+        <div className="bg-slate-900 text-white px-3 sm:px-4 py-1 text-xs font-medium flex flex-wrap items-center justify-between gap-1 border-b border-slate-800 shadow-xs shrink-0">
           <div className="flex items-center space-x-2 sm:space-x-3 text-[11px] sm:text-xs truncate">
             <span className="flex items-center text-emerald-400 font-bold shrink-0">
               <span className="w-2 h-2 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
@@ -339,15 +339,15 @@ export default function PosPage() {
             <span className="text-slate-400 hidden sm:inline">
               Opening: <strong className="text-white">{formatCurrency(activeShift.openingCash)}</strong>
             </span>
-            <span className="text-slate-400 hidden md:inline">
+            <span className="text-slate-400 hidden 2xl:inline">
               Started: {new Date(activeShift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
-          <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+          <div className="flex items-center space-x-1 sm:space-x-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setIsExpenseOpen(true)}
-              className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              className="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
               title="دکان کا روزمرہ خرچہ درج کریں"
             >
               <Receipt className="w-3.5 h-3.5 text-amber-400" />
@@ -356,7 +356,7 @@ export default function PosPage() {
             <button
               type="button"
               onClick={() => setIsLossOpen(true)}
-              className="bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
+              className="bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-xs"
               title="ٹوٹ پھوٹ یا چوری کی رپورٹ کریں"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
@@ -365,21 +365,21 @@ export default function PosPage() {
             <button
               type="button"
               onClick={handleToggleLock}
-              className={`hidden lg:flex px-2.5 py-1 rounded-lg text-xs font-bold transition items-center space-x-1 border shadow-xs ${
+              className={`hidden lg:flex px-2 py-0.5 sm:py-1 rounded-lg text-[11px] sm:text-xs font-bold transition items-center space-x-1 border shadow-xs ${
                 isLocked
                   ? "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white"
                   : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-emerald-900/40"
               }`}
               title={isLocked ? "Panels Locked (Click to enable resizing)" : "Panels Resizable (Click to lock)"}
             >
-              <span>{isLocked ? "🔒 Panels Locked" : "🔓 Resize Panels"}</span>
+              <span>{isLocked ? "🔒 Locked" : "🔓 Resize"}</span>
             </button>
             <button
               onClick={() => setIsShiftOpen(true)}
-              className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 sm:px-3 py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
+              className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center space-x-1 shadow-sm shrink-0"
             >
               <Clock className="w-3 h-3" />
-              <span>Close Shift (کلوزنگ رجسٹر)</span>
+              <span>Close Shift<span className="hidden xl:inline"> (کلوزنگ رجسٹر)</span></span>
             </button>
           </div>
         </div>
@@ -513,7 +513,7 @@ export default function PosPage() {
         {/* Right Pane: Cart & Checkout Summary */}
         <div
           className={`w-full lg:h-full border-t lg:border-t-0 border-slate-200 shadow-xl overflow-hidden min-w-0 ${
-            !isDesktop && mobileTab !== "cart" ? "hidden" : "flex flex-col h-full"
+            !isDesktop && mobileTab !== "cart" ? "hidden" : "flex flex-col h-full min-h-0"
           }`}
           style={{
             width: isDesktop ? `${100 - leftWidth}%` : "100%",

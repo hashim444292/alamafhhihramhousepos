@@ -575,52 +575,58 @@ export default function ReportsPage() {
               </div>
             )}
 
-            <div className="flex items-center space-x-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-              <Calendar className="w-4 h-4 text-slate-500" />
-              <span className="text-slate-600 font-semibold">From:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setPreset("custom");
-                  const newStart = e.target.value;
-                  setStartDate(newStart);
-                  if (endDate && newStart > endDate) {
-                    setEndDate(newStart);
-                  }
-                }}
-                className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
-              />
-              <span className="text-slate-600 font-semibold">To:</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setPreset("custom");
-                  const newEnd = e.target.value;
-                  setEndDate(newEnd);
-                  if (startDate && newEnd < startDate) {
-                    setStartDate(newEnd);
-                  }
-                }}
-                className="px-2 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
-              />
-              <button
-                onClick={() => loadReportData()}
-                className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-sm"
-              >
-                <Filter className="w-3 h-3 text-emerald-400" />
-                <span>Filter</span>
-              </button>
-              {(startDate || endDate) && (
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200">
+              <div className="flex items-center space-x-1">
+                <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <span className="text-slate-600 font-semibold text-[11px]">From:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => {
+                    setPreset("custom");
+                    const newStart = e.target.value;
+                    setStartDate(newStart);
+                    if (endDate && newStart > endDate) {
+                      setEndDate(newStart);
+                    }
+                  }}
+                  className="px-1.5 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
+                />
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="text-slate-600 font-semibold text-[11px]">To:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => {
+                    setPreset("custom");
+                    const newEnd = e.target.value;
+                    setEndDate(newEnd);
+                    if (startDate && newEnd < startDate) {
+                      setStartDate(newEnd);
+                    }
+                  }}
+                  className="px-1.5 py-0.5 border rounded text-xs bg-white focus:ring-1 focus:ring-slate-900 outline-none"
+                />
+              </div>
+              <div className="flex items-center space-x-1">
                 <button
-                  onClick={() => applyPreset("all")}
-                  title="Clear date filter to view all records"
-                  className="px-2 py-1 text-slate-500 hover:text-rose-600 transition text-xs font-semibold"
+                  onClick={() => loadReportData()}
+                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-bold transition flex items-center space-x-1 shadow-sm"
                 >
-                  Reset
+                  <Filter className="w-3 h-3 text-emerald-400" />
+                  <span>Filter</span>
                 </button>
-              )}
+                {(startDate || endDate) && (
+                  <button
+                    onClick={() => applyPreset("all")}
+                    title="Clear date filter to view all records"
+                    className="px-2 py-1 text-slate-500 hover:text-rose-600 transition text-xs font-semibold"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -34,10 +34,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${inter.className} min-h-screen bg-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white`}>
+    <html lang="en" className="h-full">
+      <body className={`${inter.variable} ${inter.className} h-full bg-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white overflow-x-hidden`}>
         <Navbar />
-        <main className="flex-1 pb-16 md:pb-0">{children}</main>
+        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto pb-14 md:pb-0">{children}</main>
       </body>
     </html>
   );

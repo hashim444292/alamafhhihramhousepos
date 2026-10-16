@@ -169,9 +169,9 @@ export const Navbar: React.FC = () => {
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-xs sm:text-sm font-extrabold tracking-tight text-white group-hover:text-emerald-300 transition-colors leading-tight whitespace-nowrap">
-                <span className="inline sm:hidden">AL-AMAFHH</span>
-                <span className="hidden sm:inline">AL-AMAFHH IHRAM HOUSE</span>
+              <span className="text-xs xl:text-sm font-extrabold tracking-tight text-white group-hover:text-emerald-300 transition-colors leading-tight whitespace-nowrap">
+                <span className="inline xl:hidden">AL-AMAFHH</span>
+                <span className="hidden xl:inline">AL-AMAFHH IHRAM HOUSE</span>
               </span>
               <span className="text-[10px] font-medium text-emerald-400/90 tracking-normal hidden 2xl:block leading-none">
                 Ihram Sets & Islamic Accessories POS
@@ -181,10 +181,10 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Navigation Links - Fully responsive for laptops (1024px-1366px) and wide desktop (1440px+) */}
-        <nav className="hidden lg:flex items-center space-x-1 xl:space-x-1.5 py-0.5">
+        <nav className="hidden lg:flex items-center space-x-0.5 xl:space-x-1.5 py-0.5">
           <Link
             href="/pos"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1 xl:space-x-1.5 rounded-lg px-1.5 xl:px-2.5 py-1 text-[11px] xl:text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/pos"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -196,19 +196,19 @@ export const Navbar: React.FC = () => {
 
           <Link
             href="/inventory"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1 xl:space-x-1.5 rounded-lg px-1.5 xl:px-2.5 py-1 text-[11px] xl:text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/inventory"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
             }`}
           >
             <Package className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 shrink-0 ${pathname === "/inventory" ? "text-white" : "text-emerald-400"}`} />
-            <span>Inventory</span>
+            <span><span className="inline xl:hidden">Stock</span><span className="hidden xl:inline">Inventory</span></span>
           </Link>
 
           <Link
             href="/customers"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1 xl:space-x-1.5 rounded-lg px-1.5 xl:px-2.5 py-1 text-[11px] xl:text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/customers"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -220,19 +220,19 @@ export const Navbar: React.FC = () => {
 
           <Link
             href="/suppliers"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1 xl:space-x-1.5 rounded-lg px-1.5 xl:px-2.5 py-1 text-[11px] xl:text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/suppliers"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
             }`}
           >
             <Truck className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 shrink-0 ${pathname === "/suppliers" ? "text-white" : "text-emerald-400"}`} />
-            <span>Suppliers<span className="hidden 2xl:inline"> (وینڈرز)</span></span>
+            <span><span className="inline xl:hidden">Vendors</span><span className="hidden xl:inline">Suppliers</span><span className="hidden 2xl:inline"> (وینڈرز)</span></span>
           </Link>
 
           <Link
             href="/reports"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1 xl:space-x-1.5 rounded-lg px-1.5 xl:px-2.5 py-1 text-[11px] xl:text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/reports"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -246,7 +246,7 @@ export const Navbar: React.FC = () => {
             <>
               <Link
                 href="/expenses"
-                className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+                className={`group flex items-center space-x-1 xl:space-x-1.5 rounded-lg px-1.5 xl:px-2.5 py-1 text-[11px] xl:text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
                   pathname === "/expenses"
                     ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                     : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -258,7 +258,7 @@ export const Navbar: React.FC = () => {
 
               <Link
                 href="/dashboard"
-                className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+                className={`group flex items-center space-x-1 xl:space-x-1.5 rounded-lg px-1.5 xl:px-2.5 py-1 text-[11px] xl:text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
                   pathname === "/dashboard"
                     ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                     : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -305,14 +305,14 @@ export const Navbar: React.FC = () => {
           {/* Network & Offline Queue Badge */}
           <div className="flex items-center space-x-1.5">
             {isOnline ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 ring-1 ring-inset ring-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="hidden sm:inline">Online</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 xl:px-2.5 py-1 text-[11px] font-semibold text-emerald-400 ring-1 ring-inset ring-emerald-500/20" title="System Online (Connected to Cloud & POS Engine)">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="hidden xl:inline">Online</span>
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/30 animate-pulse">
-                <WifiOff className="w-3 h-3 text-amber-400" />
-                <span>Offline</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2 xl:px-2.5 py-1 text-[11px] font-semibold text-amber-400 ring-1 ring-inset ring-amber-500/30 animate-pulse" title="System Offline (Offline Queue Active)">
+                <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden xl:inline">Offline</span>
               </span>
             )}
 
@@ -463,19 +463,19 @@ export const Navbar: React.FC = () => {
 
           {/* User profile pill */}
           {user ? (
-            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+            <div className="flex items-center gap-1.5 sm:gap-2 pl-1.5 sm:pl-2 border-l border-slate-800 shrink-0">
               <div className="hidden sm:flex flex-col items-end">
-                <span className="text-xs font-semibold text-white tracking-tight leading-tight max-w-[100px] xl:max-w-[150px] 2xl:max-w-[220px] truncate" title={user.fullName}>
+                <span className="text-[11px] xl:text-xs font-semibold text-white tracking-tight leading-tight max-w-[70px] md:max-w-[100px] xl:max-w-[140px] 2xl:max-w-[200px] truncate" title={user.fullName}>
                   {user.fullName}
                 </span>
-                <span className="inline-block text-[10px] font-mono text-emerald-400 font-medium tracking-wider">
+                <span className="inline-block text-[9px] xl:text-[10px] font-mono text-emerald-400 font-medium tracking-wider">
                   [{user.role}]
                 </span>
               </div>
               <button
                 onClick={handleLogout}
                 title="Sign out"
-                className="flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-150"
+                className="flex items-center justify-center p-1.5 sm:p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-150"
               >
                 <LogOut className="w-4 h-4" />
               </button>

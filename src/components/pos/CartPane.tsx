@@ -163,12 +163,12 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
       </div>
 
       {/* Cart Items Table */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-2">
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 p-2">
         {cart.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 py-12">
-            <Receipt className="w-12 h-12 stroke-1 mb-2 opacity-50" />
-            <p className="text-sm font-medium">Cart is empty</p>
-            <p className="text-xs text-slate-400 mt-1">Scan barcode or tap products</p>
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 py-4 sm:py-6 text-center">
+            <Receipt className="w-8 h-8 sm:w-10 sm:h-10 stroke-1 mb-1.5 opacity-50" />
+            <p className="text-xs sm:text-sm font-medium">Cart is empty</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">Scan barcode or tap products</p>
           </div>
         ) : (
           cart.map((item) => (
@@ -255,7 +255,7 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
       </div>
 
       {/* Cart Summary & Sticky Checkout Area */}
-      <div className="border-t border-slate-200 p-3 bg-slate-50 space-y-2">
+      <div className="border-t border-slate-200 p-2 sm:p-2.5 bg-slate-50 space-y-1.5 shrink-0">
         <div className="flex justify-between text-xs text-slate-600">
           <span>Subtotal:</span>
           <span>{formatCurrency(subtotal)}</span>
@@ -264,7 +264,7 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
         <div className="flex justify-between text-xs items-center">
           <button
             onClick={handleOpenCartDiscount}
-            className="text-emerald-700 hover:underline flex items-center space-x-1 font-medium"
+            className="text-emerald-700 hover:underline flex items-center space-x-1 font-medium text-[11px] sm:text-xs"
           >
             <Percent className="w-3 h-3" />
             <span>
@@ -273,7 +273,7 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
                 `(${cartDiscountValue}${cartDiscountType === "PERCENTAGE" ? "%" : " Rs."})`}
             </span>
           </button>
-          <span className={cartDiscountAmount > 0 ? "text-rose-600 font-semibold" : "text-slate-600"}>
+          <span className={cartDiscountAmount > 0 ? "text-rose-600 font-semibold text-xs" : "text-slate-600 text-xs"}>
             -{formatCurrency(cartDiscountAmount)}
           </span>
         </div>
@@ -286,33 +286,33 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
         )}
 
         {/* Grand Total */}
-        <div className="flex justify-between items-baseline pt-2 border-t border-slate-200">
-          <span className="font-bold text-sm text-slate-900">Grand Total:</span>
-          <span className="font-black text-xl sm:text-2xl text-emerald-700">
+        <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-200">
+          <span className="font-bold text-xs sm:text-sm text-slate-900">Grand Total:</span>
+          <span className="font-black text-lg sm:text-xl text-emerald-700">
             {formatCurrency(grandTotal)}
           </span>
         </div>
 
         {/* Dual Checkout Buttons: 1) Fast Fully Paid Cash  2) Khata / Udhaar for Client */}
-        <div className="grid grid-cols-1 gap-2 pt-1">
+        <div className="grid grid-cols-1 gap-1.5 pt-0.5">
           {/* Button 1: Fast Cash Checkout (فوری نقد / 100% Paid) */}
           <button
             disabled={cart.length === 0}
             onClick={() => onPayClick("CASH")}
-            className={`w-full py-3 px-3 rounded-xl font-bold text-sm text-white shadow-md transition flex items-center justify-between active:scale-[0.99] ${
+            className={`w-full py-2 sm:py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm text-white shadow-sm transition flex items-center justify-between active:scale-[0.99] ${
               cart.length === 0
                  ? "bg-slate-300 cursor-not-allowed shadow-none"
                 : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-700/20"
             }`}
           >
             <div className="flex items-center space-x-1.5">
-              <span className="text-base">⚡</span>
+              <span className="text-sm">⚡</span>
               <span className="text-left leading-tight">
-                <span className="block font-black">Fast Cash Checkout</span>
+                <span className="block font-black text-xs sm:text-sm">Fast Cash Checkout</span>
                 <span className="text-[10px] text-emerald-200 font-normal">فوری نقد (Fully Paid)</span>
               </span>
             </div>
-            <span className="text-xs bg-emerald-700/60 px-2 py-1 rounded-lg font-extrabold text-white">
+            <span className="text-xs bg-emerald-700/60 px-2 py-0.5 rounded-lg font-extrabold text-white">
               {formatCurrency(grandTotal)}
             </span>
           </button>
@@ -327,20 +327,20 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
                 onPayClick("CREDIT");
               }
             }}
-            className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs text-slate-800 border transition flex items-center justify-between active:scale-[0.99] ${
+            className={`w-full py-2 px-3 rounded-xl font-bold text-xs text-slate-800 border transition flex items-center justify-between active:scale-[0.99] ${
               cart.length === 0
                 ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
                 : "bg-amber-50 hover:bg-amber-100/80 border-amber-300 text-amber-950"
             }`}
           >
             <div className="flex items-center space-x-1.5">
-              <UserCheck className="w-4 h-4 text-amber-700" />
+              <UserCheck className="w-3.5 h-3.5 text-amber-700" />
               <span className="text-left leading-tight">
-                <span className="block font-black">Khata / Udhaar Sale</span>
+                <span className="block font-black text-xs">Khata / Udhaar Sale</span>
                 <span className="text-[10px] text-amber-800 font-medium">رجسٹرڈ گاہک کا کھاتہ / ادھار</span>
               </span>
             </div>
-            <span className="text-[11px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded">
+            <span className="text-[10px] sm:text-[11px] font-bold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded">
               {selectedCustomer ? selectedCustomer.name : "Select Client"}
             </span>
           </button>

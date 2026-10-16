@@ -85,9 +85,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   });
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 border-r border-slate-200">
+    <div className="flex flex-col h-full min-h-0 bg-slate-50 border-r border-slate-200 overflow-hidden">
       {/* Top Search & Barcode Scan Bar */}
-      <div className="p-3 bg-white border-b border-slate-200 space-y-2">
+      <div className="p-2 sm:p-3 bg-white border-b border-slate-200 space-y-1.5 sm:space-y-2 shrink-0">
         <div className="flex items-center gap-2">
           {/* USB Barcode Fast Scanner Input */}
           <form onSubmit={handleBarcodeSubmit} className="relative flex-1">
@@ -156,7 +156,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
       </div>
 
       {/* Touch-Friendly Products Grid */}
-      <div className="flex-1 p-3 overflow-y-auto">
+      <div className="flex-1 min-h-0 p-2 sm:p-2.5 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center h-48 text-slate-400 text-sm">
             Loading products catalog...
@@ -167,7 +167,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             <p className="text-sm">No products found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2 sm:gap-2.5">
             {filteredProducts.map((p) => {
               const isOut = p.stockQuantity <= 0;
               const isLow = p.stockQuantity > 0 && p.stockQuantity <= p.minStockThreshold;
@@ -177,7 +177,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                   key={p.id}
                   disabled={isOut}
                   onClick={() => addItem(p)}
-                  className={`flex flex-col text-left p-3 rounded-xl border bg-white shadow-sm transition active:scale-[0.98] relative overflow-hidden select-none ${
+                  className={`flex flex-col text-left p-2.5 sm:p-3 rounded-xl border bg-white shadow-sm transition active:scale-[0.98] relative overflow-hidden select-none ${
                     isOut
                       ? "opacity-50 cursor-not-allowed border-slate-200"
                       : "hover:border-emerald-500 hover:shadow-md cursor-pointer border-slate-200"
