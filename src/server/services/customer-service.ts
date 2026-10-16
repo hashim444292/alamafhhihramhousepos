@@ -99,7 +99,7 @@ export class CustomerService {
 
       if (!customer) throw new Error("Customer not found");
 
-      const newBalance = customer.balance - amount;
+      const newBalance = Math.round((customer.balance - amount) * 100) / 100;
       const voucherNo = `RCV-${Date.now().toString().slice(-6)}`;
 
       await tx.customerLedgerEntry.create({

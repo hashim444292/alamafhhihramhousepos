@@ -3,6 +3,9 @@ import { getAuthUser, unauthorizedResponse, forbiddenResponse } from "@/lib/auth
 import db from "@/lib/db";
 import { parseDateFilter } from "@/lib/date-utils";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorizedResponse();

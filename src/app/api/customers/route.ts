@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { CustomerService } from "@/server/services/customer-service";
 import { getAuthUser, unauthorizedResponse } from "@/lib/auth-middleware";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

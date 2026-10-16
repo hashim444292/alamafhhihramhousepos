@@ -314,10 +314,10 @@ export class ShiftService {
     }
     const isPrivileged = role === "ADMIN" || role === "MANAGER";
 
-    // Calculate sales breakdown for this shift
+    // Calculate sales breakdown for this shift (only actual cash collected into drawer)
     const cashSales = shift.sales
       .filter((s) => s.paymentMethod === "CASH")
-      .reduce((sum, s) => sum + s.totalAmount, 0);
+      .reduce((sum, s) => sum + Math.max(0, s.totalAmount - (s.balanceDue || 0)), 0);
 
     const cardSales = shift.sales
       .filter((s) => s.paymentMethod === "CARD")
@@ -342,9 +342,9 @@ export class ShiftService {
     });
     const totalCashExpenses = cashExpenses._sum.amount || 0;
 
-    // Expected cash in drawer = Opening cash + Cash collected from cash sales - Cash paid for expenses
-    const systemExpectedCash = shift.openingCash + cashSales - totalCashExpenses;
-    const cashDifference = input.closingCash - systemExpectedCash;
+    // Expected cash in drawer = Opening cash + Actual cash collected from cash sales - Cash paid for expenses
+    const systemExpectedCash = Math.round((shift.openingCash + cashSales - totalCashExpenses) * 100) / 100;
+    const cashDifference = Math.round((input.closingCash - systemExpectedCash) * 100) / 100;
 
     const handoverAmount =
       input.handoverCash !== undefined && input.handoverCash !== null

@@ -260,33 +260,35 @@ export const usePosStore = create<PosState>()(
       clearOfflineQueue: () => set({ offlineQueue: [] }),
 
       getSubtotal: () => {
-        return get().cart.reduce((sum, item) => sum + item.subtotalAmount, 0);
+        const raw = get().cart.reduce((sum, item) => sum + item.subtotalAmount, 0);
+        return Math.round(raw * 100) / 100;
       },
 
       getCartDiscountAmount: () => {
         const subtotal = get().getSubtotal();
         const { cartDiscountType, cartDiscountValue } = get();
+        let discount = 0;
         if (cartDiscountType === "PERCENTAGE") {
-          return (subtotal * Math.min(100, cartDiscountValue)) / 100;
+          discount = (subtotal * Math.min(100, cartDiscountValue)) / 100;
+        } else if (cartDiscountType === "FIXED") {
+          discount = Math.min(subtotal, cartDiscountValue);
         }
-        if (cartDiscountType === "FIXED") {
-          return Math.min(subtotal, cartDiscountValue);
-        }
-        return 0;
+        return Math.round(discount * 100) / 100;
       },
 
       getTaxAmount: () => {
         const subtotal = get().getSubtotal();
         const cartDiscount = get().getCartDiscountAmount();
         const taxable = Math.max(0, subtotal - cartDiscount);
-        return taxable * get().taxRate;
+        return Math.round(taxable * get().taxRate * 100) / 100;
       },
 
       getGrandTotal: () => {
         const subtotal = get().getSubtotal();
         const cartDiscount = get().getCartDiscountAmount();
         const tax = get().getTaxAmount();
-        return Math.max(0, subtotal - cartDiscount + tax);
+        const total = Math.max(0, subtotal - cartDiscount + tax);
+        return Math.round(total * 100) / 100;
       },
     }),
     {

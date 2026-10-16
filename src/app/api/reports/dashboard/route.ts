@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { ReportsService } from "@/server/services/reports-service";
 import { getAuthUser, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-middleware";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorizedResponse();

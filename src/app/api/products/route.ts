@@ -3,6 +3,9 @@ import { ProductService } from "@/server/services/product-service";
 import { getAuthUser, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-middleware";
 import { ProductSchema } from "@/lib/validations/product";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

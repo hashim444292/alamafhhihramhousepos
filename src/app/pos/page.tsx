@@ -207,6 +207,7 @@ export default function PosPage() {
 
   const handleSaleSuccess = (transaction: any) => {
     setCompletedInvoice(transaction);
+    fetchCatalog();
   };
 
   const handleCameraScanSuccess = (decodedBarcode: string) => {

@@ -209,7 +209,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
         const data = await res.json();
         if (!res.ok || !data.success) {
-          throw new Error(data.error || "Server rejected transaction");
+          setErrorMsg(data.error || "Server rejected transaction");
+          setProcessing(false);
+          return;
         }
 
         clearCart();
@@ -217,7 +219,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         onSuccess(data.transaction);
         return;
       } catch (err: any) {
-        console.warn("Online checkout failed, falling back to offline queue:", err.message);
+        // Only fallback to offline queue if device is genuinely offline or network failed to reach server
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          console.warn("Device is offline, falling back to local queue");
+        } else {
+          setErrorMsg(err.message || "Failed to process sale. Please try again.");
+          setProcessing(false);
+          return;
+        }
       }
     }
 

@@ -62,9 +62,11 @@ export class ReportsService {
 
     // 4. Payment method distribution for today
     const paymentBreakdown = {
-      CASH: todaySales.filter((s) => s.paymentMethod === "CASH").reduce((a, s) => a + s.totalAmount, 0),
-      CARD: todaySales.filter((s) => s.paymentMethod === "CARD").reduce((a, s) => a + s.totalAmount, 0),
-      MOBILE_WALLET: todaySales.filter((s) => s.paymentMethod === "MOBILE_WALLET").reduce((a, s) => a + s.totalAmount, 0),
+      CASH: Math.round(todaySales.filter((s) => s.paymentMethod === "CASH").reduce((a, s) => a + s.totalAmount, 0) * 100) / 100,
+      CARD: Math.round(todaySales.filter((s) => s.paymentMethod === "CARD").reduce((a, s) => a + s.totalAmount, 0) * 100) / 100,
+      MOBILE_WALLET: Math.round(todaySales.filter((s) => s.paymentMethod === "MOBILE_WALLET").reduce((a, s) => a + s.totalAmount, 0) * 100) / 100,
+      CREDIT: Math.round(todaySales.filter((s) => s.paymentMethod === "CREDIT").reduce((a, s) => a + s.totalAmount, 0) * 100) / 100,
+      BANK_TRANSFER: Math.round(todaySales.filter((s) => s.paymentMethod === "BANK_TRANSFER").reduce((a, s) => a + s.totalAmount, 0) * 100) / 100,
     };
 
     // 5. Low stock alerts count
@@ -86,19 +88,19 @@ export class ReportsService {
 
     return {
       today: {
-        revenue: todayTotalRevenue,
+        revenue: Math.round(todayTotalRevenue * 100) / 100,
         transactionCount: todayTransactionCount,
-        cogs: todayCOGS,
-        grossProfit: todayGrossProfit,
-        expenses: todayTotalExpenses,
-        netProfit: todayNetProfit,
+        cogs: Math.round(todayCOGS * 100) / 100,
+        grossProfit: Math.round(todayGrossProfit * 100) / 100,
+        expenses: Math.round(todayTotalExpenses * 100) / 100,
+        netProfit: Math.round(todayNetProfit * 100) / 100,
         paymentBreakdown,
       },
       lifetime: {
-        totalRevenue,
-        totalCOGS,
-        totalExpenses,
-        totalNetProfit,
+        totalRevenue: Math.round(totalRevenue * 100) / 100,
+        totalCOGS: Math.round(totalCOGS * 100) / 100,
+        totalExpenses: Math.round(totalExpenses * 100) / 100,
+        totalNetProfit: Math.round(totalNetProfit * 100) / 100,
       },
       lowStockCount,
       recentSales,

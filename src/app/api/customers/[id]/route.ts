@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { CustomerService } from "@/server/services/customer-service";
 import { getAuthUser, unauthorizedResponse, forbiddenResponse } from "@/lib/auth-middleware";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }

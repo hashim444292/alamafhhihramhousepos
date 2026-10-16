@@ -54,6 +54,7 @@ export class SalesService {
       } else if (input.amountTendered < input.totalAmount) {
         balanceDue = Math.max(0, input.totalAmount - input.amountTendered);
       }
+      balanceDue = Math.round(balanceDue * 100) / 100;
 
       // 4. Validate handover clearance and active shift for this cashier
       const clearance = await ShiftService.checkCashierHandoverClearance(cashierId);
@@ -168,19 +169,20 @@ export class SalesService {
 
         if (customer) {
           const prevBalance = customer.balance;
-          const newBalance = prevBalance + balanceDue;
+          const newBalance = Math.round((prevBalance + balanceDue) * 100) / 100;
+          const paidAtCheckout = Math.round((input.totalAmount - balanceDue) * 100) / 100;
 
           await tx.customerLedgerEntry.create({
             data: {
               customerId: input.customerId,
               referenceType: "SALE_INVOICE",
               referenceId: invoiceNumber,
-              debit: balanceDue > 0 ? balanceDue : input.totalAmount,
-              credit: balanceDue > 0 ? 0 : input.totalAmount,
+              debit: input.totalAmount,
+              credit: paidAtCheckout,
               runningBalance: newBalance,
               notes:
                 balanceDue > 0
-                  ? `Credit Sale on Invoice #${invoiceNumber} (Pending: Rs. ${balanceDue.toFixed(2)})`
+                  ? `Credit Sale on Invoice #${invoiceNumber} (Paid: Rs. ${paidAtCheckout.toFixed(2)}, Due: Rs. ${balanceDue.toFixed(2)})`
                   : `Full Paid Sale on Invoice #${invoiceNumber}`,
             },
           });
@@ -199,13 +201,10 @@ export class SalesService {
         }
       }
 
-      // 8. Update Shift running total if shiftId is provided
-      if (input.shiftId) {
-        const actualCashCollected =
-          input.paymentMethod === "CASH" ? Math.min(input.totalAmount, input.amountTendered) : 0;
-
+      // 8. Update Shift running total if shift exists
+      if (resolvedShiftId) {
         await tx.shift.update({
-          where: { id: input.shiftId },
+          where: { id: resolvedShiftId },
           data: {
             totalSalesAmount: { increment: input.totalAmount },
             totalTransactions: { increment: 1 },
@@ -335,22 +334,28 @@ export class SalesService {
         });
 
         if (customer) {
-          // If invoice had balanceDue (pending udhaar), reduce customer balance by that amount
-          // If full amount was paid, or if refunded via Khata credit, decrease balance
-          const balanceReduction = transaction.balanceDue > 0 ? transaction.balanceDue : 0;
-          const newBalance = Math.max(0, customer.balance - balanceReduction);
+          // If customer chose KHATA_CREDIT, credit the entire return amount to reduce customer's debt
+          // If customer was paid CASH, reduce customer balance only by any outstanding Udhaar (balanceDue) on this invoice
+          const balanceReduction = refundMethod === "KHATA_CREDIT"
+            ? transaction.totalAmount
+            : (transaction.balanceDue > 0 ? transaction.balanceDue : 0);
 
-          await tx.customerLedgerEntry.create({
-            data: {
-              customerId: customer.id,
-              referenceType: "SALE_RETURN",
-              referenceId: transaction.invoiceNumber,
-              debit: 0,
-              credit: transaction.totalAmount,
-              runningBalance: newBalance,
-              notes: `Sales Return on Invoice #${transaction.invoiceNumber} - ${reason}`,
-            },
-          });
+          const newBalance = Math.round(Math.max(0, customer.balance - balanceReduction) * 100) / 100;
+          const creditAmount = refundMethod === "KHATA_CREDIT" ? transaction.totalAmount : balanceReduction;
+
+          if (creditAmount > 0 || refundMethod === "KHATA_CREDIT") {
+            await tx.customerLedgerEntry.create({
+              data: {
+                customerId: customer.id,
+                referenceType: "SALE_RETURN",
+                referenceId: transaction.invoiceNumber,
+                debit: 0,
+                credit: creditAmount,
+                runningBalance: newBalance,
+                notes: `Sales Return on Invoice #${transaction.invoiceNumber} (${refundMethod === "KHATA_CREDIT" ? "Khata Credited" : "Cash Refunded"}) - ${reason}`,
+              },
+            });
+          }
 
           await tx.customer.update({
             where: { id: customer.id },

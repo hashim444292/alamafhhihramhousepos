@@ -248,7 +248,7 @@ export class SupplierService {
       // If partial or full payment was made now, record payment debit
       let finalBalance = afterBillBal;
       if (input.paidAmount > 0) {
-        finalBalance = afterBillBal - input.paidAmount;
+        finalBalance = Math.round((afterBillBal - input.paidAmount) * 100) / 100;
         await tx.supplierLedgerEntry.create({
           data: {
             supplierId: input.supplierId,
@@ -297,7 +297,7 @@ export class SupplierService {
 
       if (!supplier) throw new Error("Supplier not found");
 
-      const newBalance = supplier.currentBalance - amount;
+      const newBalance = Math.round((supplier.currentBalance - amount) * 100) / 100;
       const receiptNo = `VOUCH-${Date.now().toString().slice(-6)}`;
 
       await tx.supplierLedgerEntry.create({
@@ -322,8 +322,8 @@ export class SupplierService {
         });
         if (targetPO && targetPO.balanceAmount > 0) {
           const settle = Math.min(targetPO.balanceAmount, remainingToApply);
-          const newPaid = targetPO.paidAmount + settle;
-          const newBal = targetPO.balanceAmount - settle;
+          const newPaid = Math.round((targetPO.paidAmount + settle) * 100) / 100;
+          const newBal = Math.round((targetPO.balanceAmount - settle) * 100) / 100;
           const newStatus = newBal <= 0.01 ? "PAID" : "PARTIAL";
 
           await tx.purchaseOrder.update({
@@ -354,8 +354,8 @@ export class SupplierService {
         for (const po of pendingPOs) {
           if (remainingToApply <= 0) break;
           const settle = Math.min(po.balanceAmount, remainingToApply);
-          const newPaid = po.paidAmount + settle;
-          const newBal = po.balanceAmount - settle;
+          const newPaid = Math.round((po.paidAmount + settle) * 100) / 100;
+          const newBal = Math.round((po.balanceAmount - settle) * 100) / 100;
           const newStatus = newBal <= 0.01 ? "PAID" : "PARTIAL";
 
           await tx.purchaseOrder.update({

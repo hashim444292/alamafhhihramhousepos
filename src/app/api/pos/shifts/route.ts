@@ -3,6 +3,9 @@ import { ShiftService } from "@/server/services/shift-service";
 import { getAuthUser, unauthorizedResponse } from "@/lib/auth-middleware";
 import { OpenShiftSchema } from "@/lib/validations/shift";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorizedResponse();
