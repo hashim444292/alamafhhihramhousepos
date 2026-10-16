@@ -1,0 +1,25 @@
+{
+  "name": "Al-Amafhh Ihram House POS",
+  "short_name": "Al-Amafhh POS",
+  "description": "Production POS & Retail Inventory Control System for Al-Afhhihram House",
+  "start_url": "/pos",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

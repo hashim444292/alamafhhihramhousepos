@@ -245,8 +245,8 @@ export default function ExpensesPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
+          <div className="flex-1 overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm min-w-[500px]">
               <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
                 <tr>
                   <th className="py-2.5 px-3">Date</th>

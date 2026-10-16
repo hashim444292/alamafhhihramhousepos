@@ -718,12 +718,12 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Trading & Profit & Loss Statement Table */}
-                <div className="border border-slate-300 rounded-xl overflow-hidden">
-                  <div className="bg-slate-100 px-4 py-2.5 font-bold text-xs text-slate-800 border-b flex justify-between">
+                <div className="border border-slate-300 rounded-xl overflow-x-auto">
+                  <div className="bg-slate-100 px-4 py-2.5 font-bold text-xs text-slate-800 border-b flex justify-between min-w-[500px]">
                     <span>Trading Account & Profit & Loss Head (حساب و کتاب برائے منتخب مدت)</span>
                     <span>Amount (PKR)</span>
                   </div>
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs min-w-[500px]">
                     <tbody className="divide-y divide-slate-200">
                       <tr className="bg-white">
                         <td className="py-2.5 px-4 font-bold text-slate-900">
@@ -793,8 +793,8 @@ export default function ReportsPage() {
                 </div>
 
                 {/* Cash Flow Reconciliation Inflows & Outflows */}
-                <div className="border border-slate-300 rounded-xl overflow-hidden">
-                  <div className="bg-slate-900 px-4 py-2.5 font-bold text-xs text-white flex justify-between items-center">
+                <div className="border border-slate-300 rounded-xl overflow-x-auto">
+                  <div className="bg-slate-900 px-4 py-2.5 font-bold text-xs text-white flex justify-between items-center min-w-[550px]">
                     <span className="flex items-center space-x-2">
                       <Clock className="w-4 h-4 text-emerald-400" />
                       <span>
@@ -806,7 +806,7 @@ export default function ReportsPage() {
                     </span>
                   </div>
 
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs min-w-[550px]">
                     <tbody className="divide-y divide-slate-100">
                       {/* Cash Inflow from Sales */}
                       <tr className="bg-white">
@@ -2014,8 +2014,8 @@ export default function ReportsPage() {
             </div>
 
             {/* Itemized List Table (کتنے پیس ہیں، کیا پروڈکٹ ہے) */}
-            <div className="border rounded-xl overflow-hidden">
-              <table className="w-full text-left text-xs">
+            <div className="border rounded-xl overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[500px]">
                 <thead className="bg-slate-100 text-slate-700 font-bold border-b">
                   <tr>
                     <th className="py-2.5 px-3">#</th>
@@ -2319,8 +2319,8 @@ export default function ReportsPage() {
                   </span>
                 </div>
 
-                <div className="border rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                <div className="border rounded-xl overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[550px]">
                     <thead className="bg-slate-100 text-slate-700 font-bold border-b">
                       <tr>
                         <th className="py-2.5 px-3">Date</th>
@@ -2416,8 +2416,8 @@ export default function ReportsPage() {
                   </span>
                 </div>
 
-                <div className="border rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                <div className="border rounded-xl overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[550px]">
                     <thead className="bg-slate-100 text-slate-700 font-bold border-b">
                       <tr>
                         <th className="py-2.5 px-3">Date</th>

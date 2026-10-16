@@ -296,7 +296,9 @@ export default function CustomersPage() {
       {/* Main Customers List & Ledger */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Customer Directory (6 cols) */}
-        <div className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className={`lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col ${
+          activeCustomer ? "hidden lg:flex" : "flex"
+        }`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -417,7 +419,20 @@ export default function CustomersPage() {
         </div>
 
         {/* Right: Customer Profile, Past Invoices & Ledger (6 cols) */}
-        <div id="customer-khata-printable-area" className="lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4">
+        <div id="customer-khata-printable-area" className={`lg:col-span-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4 ${
+          !activeCustomer ? "hidden lg:block" : "block"
+        }`}>
+          {activeCustomer && (
+            <div className="lg:hidden pb-3 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActiveCustomer(null)}
+                className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition active:scale-95"
+              >
+                <span>← Back to Customer Directory (گاہکوں کی فہرست)</span>
+              </button>
+            </div>
+          )}
           {activeCustomer ? (
             <div className="space-y-4">
               <div className="flex items-start justify-between border-b pb-3">

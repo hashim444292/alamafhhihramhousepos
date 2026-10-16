@@ -368,7 +368,7 @@ export default function SuppliersPage() {
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Live Auto-Refresh indicator & Refresh button */}
           <button
             onClick={() => {
@@ -397,7 +397,7 @@ export default function SuppliersPage() {
 
           <button
             onClick={handleOpenAdd}
-            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 transition shadow-sm"
+            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 transition shadow-sm active:scale-95"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Add New Supplier (نیا وینڈر)</span>
@@ -445,7 +445,9 @@ export default function SuppliersPage() {
       {/* Suppliers Table & Ledger View */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Suppliers Directory (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className={`lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col ${
+          activeSupplier ? "hidden lg:flex" : "flex"
+        }`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-3">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -579,7 +581,20 @@ export default function SuppliersPage() {
         </div>
 
         {/* Right: Supplier Ledger & Printable Statement (5 cols) */}
-        <div id="supplier-ledger-printable-area" className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4">
+        <div id="supplier-ledger-printable-area" className={`lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4 ${
+          !activeSupplier ? "hidden lg:block" : "block"
+        }`}>
+          {activeSupplier && (
+            <div className="lg:hidden pb-3 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActiveSupplier(null)}
+                className="flex items-center space-x-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition active:scale-95"
+              >
+                <span>← Back to Suppliers List (وینڈرز کی فہرست)</span>
+              </button>
+            </div>
+          )}
           {activeSupplier ? (
             <div className="space-y-4">
               <div className="flex items-start justify-between border-b pb-3">

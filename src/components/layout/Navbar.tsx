@@ -23,6 +23,8 @@ import {
   Clock,
   X,
   AlertTriangle,
+  Menu,
+  ChevronRight,
 } from "lucide-react";
 import { ShiftModal } from "@/components/pos/ShiftModal";
 
@@ -42,6 +44,7 @@ export const Navbar: React.FC = () => {
 
   const [syncing, setSyncing] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLogoutShiftModalOpen, setIsLogoutShiftModalOpen] = useState(false);
   const [alertData, setAlertData] = useState<{
     totalAlertsCount: number;
@@ -52,6 +55,12 @@ export const Navbar: React.FC = () => {
     overdueSuppliers: [],
     overdueCustomers: [],
   });
+
+  // Auto-close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setAlertsOpen(false);
+  }, [pathname]);
 
   const fetchAlerts = async () => {
     if (!user) return;
@@ -73,7 +82,7 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     if (user) {
       fetchAlerts();
-      const interval = setInterval(fetchAlerts, 5000); // Polling every 5 seconds for live alerts
+      const interval = setInterval(fetchAlerts, 20000); // Polling every 20 seconds for live alerts
       return () => clearInterval(interval);
     }
   }, [user]);
@@ -140,44 +149,54 @@ export const Navbar: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 w-full select-none border-b border-slate-800 bg-slate-950/95 backdrop-blur-md shadow-md">
       <div className="w-full px-3 sm:px-4 lg:px-6 flex h-14 items-center justify-between gap-2 lg:gap-4">
-        {/* Brand / Logo */}
-        <div className="flex items-center shrink-0">
-          <Link href="/pos" className="group flex items-center space-x-2.5 transition">
-            <div className="flex h-10 items-center justify-center rounded-xl bg-white px-2.5 py-1 shadow-md border border-slate-200 group-hover:bg-slate-50 transition duration-150 shrink-0">
+        {/* Brand / Logo + Mobile Menu Trigger */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open navigation menu"
+            className="lg:hidden flex items-center justify-center p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800 transition active:scale-95 shrink-0"
+          >
+            <Menu className="w-5 h-5 text-emerald-400" />
+          </button>
+
+          <Link href="/pos" className="group flex items-center space-x-2 transition shrink-0">
+            <div className="flex h-9 sm:h-10 items-center justify-center rounded-xl bg-white px-2 py-1 shadow-md border border-slate-200 group-hover:bg-slate-50 transition duration-150 shrink-0">
               <img
                 src="/logo.png"
-                alt="AL-AMAFHH IHRAM HOUSE"
-                className="h-8 w-auto object-contain shrink-0"
+                alt="AL-AMAFHH"
+                className="h-7 sm:h-8 w-auto object-contain shrink-0"
               />
             </div>
             <div className="flex flex-col">
               <span className="text-xs sm:text-sm font-extrabold tracking-tight text-white group-hover:text-emerald-300 transition-colors leading-tight whitespace-nowrap">
-                AL-AMAFHH IHRAM HOUSE
+                <span className="inline sm:hidden">AL-AMAFHH</span>
+                <span className="hidden sm:inline">AL-AMAFHH IHRAM HOUSE</span>
               </span>
-              <span className="text-[10px] font-medium text-emerald-400/90 tracking-normal hidden xl:block leading-none">
+              <span className="text-[10px] font-medium text-emerald-400/90 tracking-normal hidden 2xl:block leading-none">
                 Ihram Sets & Islamic Accessories POS
               </span>
             </div>
           </Link>
         </div>
 
-        {/* Navigation Links - Sleek, compact, perfectly proportioned, no wrapping */}
-        <nav className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+        {/* Navigation Links - Fully responsive for laptops (1024px-1366px) and wide desktop (1440px+) */}
+        <nav className="hidden lg:flex items-center space-x-1 xl:space-x-1.5 py-0.5">
           <Link
             href="/pos"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/pos"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
             }`}
           >
             <ShoppingBag className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 shrink-0 ${pathname === "/pos" ? "text-white" : "text-emerald-400"}`} />
-            <span>POS Register</span>
+            <span>POS<span className="hidden 2xl:inline"> Register</span></span>
           </Link>
 
           <Link
             href="/inventory"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/inventory"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -189,45 +208,45 @@ export const Navbar: React.FC = () => {
 
           <Link
             href="/customers"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/customers"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
             }`}
           >
             <Users className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 shrink-0 ${pathname === "/customers" ? "text-white" : "text-emerald-400"}`} />
-            <span>Khata (گاہک)</span>
+            <span>Khata<span className="hidden 2xl:inline"> (گاہک)</span></span>
           </Link>
 
           <Link
             href="/suppliers"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/suppliers"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
             }`}
           >
             <Truck className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 shrink-0 ${pathname === "/suppliers" ? "text-white" : "text-emerald-400"}`} />
-            <span>Suppliers (وینڈرز)</span>
+            <span>Suppliers<span className="hidden 2xl:inline"> (وینڈرز)</span></span>
           </Link>
 
           <Link
             href="/reports"
-            className={`group flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+            className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
               pathname === "/reports"
                 ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                 : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
             }`}
           >
             <FileText className={`w-3.5 h-3.5 transition-transform group-hover:scale-110 shrink-0 ${pathname === "/reports" ? "text-white" : "text-emerald-400"}`} />
-            <span>Reports & Print</span>
+            <span>Reports<span className="hidden xl:inline"> & Print</span></span>
           </Link>
 
           {user?.role !== "CASHIER" && (
             <>
               <Link
                 href="/expenses"
-                className={`group flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+                className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
                   pathname === "/expenses"
                     ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                     : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -239,7 +258,7 @@ export const Navbar: React.FC = () => {
 
               <Link
                 href="/dashboard"
-                className={`group flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
+                className={`group flex items-center space-x-1.5 rounded-lg px-2 xl:px-2.5 py-1.5 text-xs font-semibold tracking-normal transition-all whitespace-nowrap ${
                   pathname === "/dashboard"
                     ? "bg-emerald-600 text-white shadow-sm shadow-emerald-950/50 ring-1 ring-emerald-400/30"
                     : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
@@ -446,7 +465,7 @@ export const Navbar: React.FC = () => {
           {user ? (
             <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
               <div className="hidden sm:flex flex-col items-end">
-                <span className="text-xs font-semibold text-white tracking-tight leading-tight">
+                <span className="text-xs font-semibold text-white tracking-tight leading-tight max-w-[100px] xl:max-w-[150px] 2xl:max-w-[220px] truncate" title={user.fullName}>
                   {user.fullName}
                 </span>
                 <span className="inline-block text-[10px] font-mono text-emerald-400 font-medium tracking-wider">
@@ -470,6 +489,249 @@ export const Navbar: React.FC = () => {
             </Link>
           )}
         </div>
+      </div>
+
+      {/* Mobile Slide-Over Drawer */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Menu */}
+          <div className="fixed inset-y-0 left-0 w-[82%] max-w-xs bg-slate-950 border-r border-slate-800 p-4 shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left duration-200">
+            <div className="space-y-4">
+              {/* Header inside drawer */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white p-1">
+                    <img src="/logo.png" alt="AL-AMAFHH" className="h-6 w-auto object-contain" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-extrabold text-white">AL-AMAFHH</div>
+                    <div className="text-[10px] text-emerald-400 font-medium">Ihram House POS</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* User info if logged in */}
+              {user && (
+                <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                  <div className="min-w-0 pr-2">
+                    <div className="text-xs font-bold text-white truncate">{user.fullName}</div>
+                    <div className="text-[10px] font-mono text-emerald-400">[{user.role}]</div>
+                  </div>
+                  <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full ring-1 ring-emerald-500/20">
+                    Active
+                  </span>
+                </div>
+              )}
+
+              {/* Navigation Links List */}
+              <div className="space-y-1">
+                <Link
+                  href="/pos"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                    pathname === "/pos"
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-950"
+                      : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                    <span>POS Register</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </Link>
+
+                <Link
+                  href="/inventory"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                    pathname === "/inventory"
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-950"
+                      : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Package className="w-4 h-4 text-emerald-400" />
+                    <span>Inventory (اسٹاک)</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </Link>
+
+                <Link
+                  href="/customers"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                    pathname === "/customers"
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-950"
+                      : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Users className="w-4 h-4 text-emerald-400" />
+                    <span>Customer Khata (گاہک کھاتہ)</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </Link>
+
+                <Link
+                  href="/suppliers"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                    pathname === "/suppliers"
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-950"
+                      : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <Truck className="w-4 h-4 text-emerald-400" />
+                    <span>Suppliers Khata (وینڈرز کھاتہ)</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </Link>
+
+                <Link
+                  href="/reports"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                    pathname === "/reports"
+                      ? "bg-emerald-600 text-white shadow-md shadow-emerald-950"
+                      : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <span>Reports & Print (رپورٹس)</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-500" />
+                </Link>
+
+                {user?.role !== "CASHIER" && (
+                  <>
+                    <Link
+                      href="/expenses"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                        pathname === "/expenses"
+                          ? "bg-emerald-600 text-white shadow-md shadow-emerald-950"
+                          : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Receipt className="w-4 h-4 text-emerald-400" />
+                        <span>Daily Expenses (اخراجات)</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-500" />
+                    </Link>
+
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                        pathname === "/dashboard"
+                          ? "bg-emerald-600 text-white shadow-md shadow-emerald-950"
+                          : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <BarChart3 className="w-4 h-4 text-emerald-400" />
+                        <span>Analytics Dashboard</span>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-500" />
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Bottom Actions inside drawer */}
+            <div className="pt-4 border-t border-slate-800 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs border border-rose-500/20 transition active:scale-95"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span>Sign Out (لاگ آؤٹ)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Bottom Quick Navigation Bar (md:hidden) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 border-t border-slate-800 backdrop-blur-lg px-2 py-1 flex items-center justify-around shadow-2xl safe-area-bottom">
+        <Link
+          href="/pos"
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg text-[10px] font-medium transition ${
+            pathname === "/pos"
+              ? "text-emerald-400 font-bold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <ShoppingBag className="w-5 h-5 mb-0.5" />
+          <span>POS</span>
+        </Link>
+
+        <Link
+          href="/inventory"
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg text-[10px] font-medium transition ${
+            pathname === "/inventory"
+              ? "text-emerald-400 font-bold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Package className="w-5 h-5 mb-0.5" />
+          <span>Stock</span>
+        </Link>
+
+        <Link
+          href="/customers"
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg text-[10px] font-medium transition ${
+            pathname === "/customers"
+              ? "text-emerald-400 font-bold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Users className="w-5 h-5 mb-0.5" />
+          <span>Khata</span>
+        </Link>
+
+        <Link
+          href="/suppliers"
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg text-[10px] font-medium transition ${
+            pathname === "/suppliers"
+              ? "text-emerald-400 font-bold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Truck className="w-5 h-5 mb-0.5" />
+          <span>Vendors</span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-lg text-[10px] font-medium text-slate-400 hover:text-slate-200 transition"
+        >
+          <Menu className="w-5 h-5 mb-0.5" />
+          <span>Menu</span>
+        </button>
       </div>
 
       {/* Mandatory Shift Close Modal on Logout */}
