@@ -1,5 +1,7 @@
 export interface ShiftHandoverData {
   handoverAmount: number;
+  receivedAmount?: number;
+  handoverDiscrepancy?: number;
   handoverStatus: "PENDING" | "ACCEPTED" | "REJECTED";
   handoverTo?: string;
   handoverManagerId?: string | null;
@@ -24,6 +26,8 @@ export function parseShiftHandover(notes: string | null | undefined): ShiftHando
       if (typeof parsed.handoverAmount === "number" || parsed.handoverStatus) {
         return {
           handoverAmount: typeof parsed.handoverAmount === "number" ? parsed.handoverAmount : 0,
+          receivedAmount: typeof parsed.receivedAmount === "number" ? parsed.receivedAmount : undefined,
+          handoverDiscrepancy: typeof parsed.handoverDiscrepancy === "number" ? parsed.handoverDiscrepancy : undefined,
           handoverStatus: parsed.handoverStatus || "ACCEPTED",
           handoverTo: parsed.handoverTo || "Manager",
           handoverManagerId: parsed.handoverManagerId || null,

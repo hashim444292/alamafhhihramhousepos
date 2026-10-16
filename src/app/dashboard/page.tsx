@@ -22,12 +22,17 @@ import {
   ShieldAlert,
   X,
   Package,
+  Landmark,
+  Banknote,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { formatCurrency, formatNumber } from "@/lib/format-utils";
+import { useAuthStore } from "@/store/auth-store";
 
 export default function DashboardPage() {
+  const { user } = useAuthStore();
   const [metrics, setMetrics] = useState<any | null>(null);
   const [salesList, setSalesList] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any | null>(null);
@@ -37,6 +42,27 @@ export default function DashboardPage() {
   // Filters
   const [paymentFilter, setPaymentFilter] = useState("ALL");
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+
+  // Cashier Handover Verification State (Manager)
+  const [verifyingHandoverShift, setVerifyingHandoverShift] = useState<any | null>(null);
+  const [verifiedAmount, setVerifiedAmount] = useState<number | string>("");
+  const [managerHandoverNotes, setManagerHandoverNotes] = useState("");
+  const [handoverSubmitting, setHandoverSubmitting] = useState(false);
+
+  // Manager-to-Owner Remittance State
+  const [remittanceData, setRemittanceData] = useState<{
+    remittances: any[];
+    balance: any;
+    admins: any[];
+  } | null>(null);
+  const [remittanceModalOpen, setRemittanceModalOpen] = useState(false);
+  const [remittanceAmount, setRemittanceAmount] = useState("");
+  const [remittanceMethod, setRemittanceMethod] = useState("CASH");
+  const [remittanceOwnerId, setRemittanceOwnerId] = useState("");
+  const [remittanceOwnerName, setRemittanceOwnerName] = useState("");
+  const [remittanceNotes, setRemittanceNotes] = useState("");
+  const [remittanceSubmitting, setRemittanceSubmitting] = useState(false);
+  const [confirmingRemittanceId, setConfirmingRemittanceId] = useState<string | null>(null);
 
   // Shortage Settlement State
   const [selectedShortageShift, setSelectedShortageShift] = useState<any | null>(null);
@@ -51,7 +77,7 @@ export default function DashboardPage() {
   const [lossSubmitting, setLossSubmitting] = useState(false);
 
   // Settlement Register active tab
-  const [settlementRegisterTab, setSettlementRegisterTab] = useState<"SHORTAGES" | "LOSSES">("SHORTAGES");
+  const [settlementRegisterTab, setSettlementRegisterTab] = useState<"SHORTAGES" | "LOSSES" | "REMITTANCES">("SHORTAGES");
 
   const fetchPendingHandovers = async () => {
     try {
@@ -67,26 +93,127 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAcceptHandover = async (shiftId: string) => {
+  const fetchRemittances = async () => {
     try {
+      const res = await fetch("/api/remittances");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setRemittanceData({
+            remittances: data.remittances || [],
+            balance: data.balance || {
+              currentCashInHand: 0,
+              totalCashRemitted: 0,
+              pendingRemittancesAmount: 0,
+              pendingRemittancesCount: 0,
+              totalCashCollected: 0,
+              totalCashExpenses: 0,
+            },
+            admins: data.admins || [],
+          });
+          if (data.admins && data.admins.length > 0 && !remittanceOwnerId) {
+            setRemittanceOwnerId(data.admins[0].id);
+            setRemittanceOwnerName(data.admins[0].fullName || data.admins[0].username);
+          }
+        }
+      }
+    } catch (e) {
+      // non-admin/manager or network
+    }
+  };
+
+  const handleVerifyAndAcceptHandover = async (action: "ACCEPT" | "REJECT") => {
+    if (!verifyingHandoverShift) return;
+    setHandoverSubmitting(true);
+    try {
+      const recAmt = action === "ACCEPT" ? parseFloat(String(verifiedAmount)) || 0 : undefined;
       const res = await fetch("/api/pos/shifts/handover", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          shiftId,
-          action: "ACCEPT",
-          notes: "Received and verified by Manager on Dashboard",
+          shiftId: verifyingHandoverShift.id,
+          action,
+          receivedAmount: recAmt,
+          notes: managerHandoverNotes,
         }),
       });
       const data = await res.json();
       if (data.success) {
-        alert("کیش ہینڈ اوور قبول کر لیا گیا ہے۔ اب کیشیئر نئی شفٹ اور بل بنا سکتا ہے۔ (Handover accepted, cashier unlocked)");
+        alert(data.message || "کیش ہینڈ اوور کی تصدیق اور منظوری مکمل ہو گئی ہے۔");
+        setVerifyingHandoverShift(null);
         fetchPendingHandovers();
+        fetchRemittances();
+        const dashRes = await fetch("/api/reports/dashboard");
+        const dashData = await dashRes.json();
+        if (dashData.success) setMetrics(dashData.metrics);
       } else {
         alert(data.error);
       }
     } catch (e: any) {
       alert(`Error: ${e.message}`);
+    } finally {
+      setHandoverSubmitting(false);
+    }
+  };
+
+  const handleSubmitRemittance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(remittanceAmount);
+    if (!amt || amt <= 0) {
+      alert("براہ کرم درست رقم درج کریں۔ (Please enter a valid amount)");
+      return;
+    }
+    setRemittanceSubmitting(true);
+    try {
+      const res = await fetch("/api/remittances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amt,
+          paymentMethod: remittanceMethod,
+          ownerId: remittanceOwnerId || undefined,
+          ownerName: remittanceOwnerName || undefined,
+          notes: remittanceNotes,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("مالک / ایڈمن کو رقم کی ادائیگی کامیابی سے ریکارڈ ہو گئی ہے۔ (Remittance recorded successfully)");
+        setRemittanceModalOpen(false);
+        setRemittanceAmount("");
+        setRemittanceNotes("");
+        fetchRemittances();
+        const dashRes = await fetch("/api/reports/dashboard");
+        const dashData = await dashRes.json();
+        if (dashData.success) setMetrics(dashData.metrics);
+      } else {
+        alert(data.error);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setRemittanceSubmitting(false);
+    }
+  };
+
+  const handleConfirmRemittance = async (remittanceId: string) => {
+    if (!confirm("کیا آپ تصدیق کرتے ہیں کہ مینیجر سے یہ رقم وصول پا لی گئی ہے؟ (Confirm receipt of this remittance?)")) return;
+    setConfirmingRemittanceId(remittanceId);
+    try {
+      const res = await fetch(`/api/remittances/${remittanceId}/confirm`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("مالک کی جانب سے رقم وصولی کی تصدیق مکمل ہو گئی ہے۔ (Remittance confirmed by owner)");
+        fetchRemittances();
+      } else {
+        alert(data.error);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
+    } finally {
+      setConfirmingRemittanceId(null);
     }
   };
 
@@ -185,6 +312,7 @@ export default function DashboardPage() {
     }
     fetchDashboard();
     fetchPendingHandovers();
+    fetchRemittances();
   }, []);
 
   const filteredSales = salesList.filter((s) => {
@@ -261,11 +389,15 @@ export default function DashboardPage() {
                 )}
 
                 <button
-                  onClick={() => handleAcceptHandover(sh.id)}
-                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow-xs flex items-center justify-center space-x-1"
+                  onClick={() => {
+                    setVerifyingHandoverShift(sh);
+                    setVerifiedAmount(sh.handover?.handoverAmount ?? sh.closingCash ?? 0);
+                    setManagerHandoverNotes("");
+                  }}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  <span>کیش وصول پایا (Accept Cash Handover)</span>
+                  <span>کیش گن کر تصدیق و وصول کریں (Verify & Accept)</span>
                 </button>
               </div>
             ))}
@@ -547,6 +679,92 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Store Manager Cash Custody & Remittance to Owner Section */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-md border border-indigo-900/60 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-800/60 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="p-2.5 bg-indigo-600 rounded-xl text-white shadow-inner">
+              <Landmark className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-white tracking-tight flex items-center space-x-2">
+                <span>اسٹور مینیجر نقد کیش و مالک کو ادائیگی</span>
+                <span className="text-[11px] font-semibold bg-indigo-700/80 text-indigo-100 px-2 py-0.5 rounded-full">
+                  Manager Cash & Owner Remittances
+                </span>
+              </h3>
+              <p className="text-xs text-indigo-200 mt-0.5">
+                درازوں سے وصول شدہ کل نقدی، دکان کے پیٹی اخراجات، اور مالک کو منتقل کردہ کیش کا شفاف آڈٹ
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setRemittanceAmount("");
+              setRemittanceNotes("");
+              setRemittanceModalOpen(true);
+            }}
+            className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm transition shadow-md flex items-center justify-center space-x-2 shrink-0 cursor-pointer"
+          >
+            <Banknote className="w-4 h-4 text-slate-950" />
+            <span>مالک / ایڈمن کو رقم دیں (Transfer Cash to Owner)</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-xl border border-white/10">
+            <span className="text-xs text-indigo-200 font-medium block">
+              مینیجر کے پاس نقد رقم (Cash in Hand)
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
+              Rs. {formatNumber(remittanceData?.balance?.currentCashInHand || 0)}
+            </div>
+            <span className="text-[10px] text-indigo-300 mt-1 block">
+              شاپ دراز سے وصول منہا اخراجات و ادائیگیاں
+            </span>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-xl border border-white/10">
+            <span className="text-xs text-indigo-200 font-medium block">
+              مالک کو ادا شدہ کل رقم (Total to Owner)
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-white mt-1">
+              Rs. {formatNumber(remittanceData?.balance?.totalCashRemitted || 0)}
+            </div>
+            <span className="text-[10px] text-indigo-300 mt-1 block">
+              {remittanceData?.balance?.totalRemittancesCount || 0} ادائیگیاں تصدیق شدہ
+            </span>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-xl border border-white/10">
+            <span className="text-xs text-indigo-200 font-medium block">
+              منتظر تصدیق (Pending Owner Confirm)
+            </span>
+            <div className={`text-xl sm:text-2xl font-black mt-1 ${
+              (remittanceData?.balance?.pendingRemittancesAmount || 0) > 0 ? "text-amber-400" : "text-slate-300"
+            }`}>
+              Rs. {formatNumber(remittanceData?.balance?.pendingRemittancesAmount || 0)}
+            </div>
+            <span className="text-[10px] text-indigo-300 mt-1 block">
+              {remittanceData?.balance?.pendingRemittancesCount || 0} واؤچرز مالک کی منظوری کے منتظر
+            </span>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xs p-3.5 rounded-xl border border-white/10">
+            <span className="text-xs text-indigo-200 font-medium block">
+              دکان کے نقد اخراجات (Cash Expenses)
+            </span>
+            <div className="text-xl sm:text-2xl font-black text-rose-300 mt-1">
+              Rs. {formatNumber(remittanceData?.balance?.totalCashExpenses || 0)}
+            </div>
+            <span className="text-[10px] text-indigo-300 mt-1 block">
+              روزمرہ شاپ پیٹی کیش اخراجات
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Due Date & Overdue Reminders Notification Center (وینڈرز کو ادائیگی اور گاہکوں سے وصولی) */}
       {alerts && (alerts.overdueSuppliers.length > 0 || alerts.overdueCustomers.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -800,6 +1018,22 @@ export default function DashboardPage() {
                 {metrics?.inventoryLossMetrics?.losses?.length || 0}
               </span>
             </button>
+
+            <button
+              onClick={() => setSettlementRegisterTab("REMITTANCES")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                settlementRegisterTab === "REMITTANCES"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              <span>💵 مینیجر تا اونر کیش لیجر</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                settlementRegisterTab === "REMITTANCES" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800"
+              }`}>
+                {remittanceData?.remittances?.length || 0}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -911,7 +1145,7 @@ export default function DashboardPage() {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : settlementRegisterTab === "LOSSES" ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm min-w-[700px]">
               <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
@@ -1026,6 +1260,87 @@ export default function DashboardPage() {
                           >
                             تبدیل / دیکھئے
                           </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs sm:text-sm min-w-[750px]">
+              <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
+                <tr>
+                  <th className="py-3 px-4">واؤچر # / تاریخ</th>
+                  <th className="py-3 px-4">ادا کنندہ (مینیجر)</th>
+                  <th className="py-3 px-4">وصول کنندہ (مالک / ایڈمن)</th>
+                  <th className="py-3 px-4">طریقہ کار (Method)</th>
+                  <th className="py-3 px-4 text-right">رقم (Amount)</th>
+                  <th className="py-3 px-4 text-center">صورتحال (Status)</th>
+                  <th className="py-3 px-4">نوٹ / مقصد</th>
+                  <th className="py-3 px-4 text-center">ایکشن</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {!remittanceData?.remittances || remittanceData.remittances.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                      ابھی تک مالک / ایڈمن کو کوئی کیش ادائیگی واؤچر درج نہیں ہوا ہے۔
+                    </td>
+                  </tr>
+                ) : (
+                  remittanceData.remittances.map((rem: any) => (
+                    <tr key={rem.id} className="hover:bg-slate-50/70">
+                      <td className="py-3 px-4 font-bold text-slate-900">
+                        <div>{rem.remittanceNumber}</div>
+                        <div className="text-[10px] text-slate-400 font-normal">
+                          {rem.remittedAt ? new Date(rem.remittedAt).toLocaleString() : "-"}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-slate-800 font-semibold">
+                        {rem.managerName || "Store Manager"}
+                      </td>
+                      <td className="py-3 px-4 text-slate-800">
+                        {rem.ownerName || "Owner / Admin"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-800">
+                          {rem.paymentMethod === "CASH" ? "💵 نقد کیش" : rem.paymentMethod === "BANK_TRANSFER" ? "🏦 بینک" : rem.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-black text-emerald-700 text-sm">
+                        {formatCurrency(rem.amount)}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {rem.status === "CONFIRMED" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            ✅ وصول شدہ (Confirmed)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                            ⏳ منتظر تصدیق
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-600 max-w-xs">
+                        {rem.notes || "-"}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {rem.status === "PENDING" && (user?.role === "ADMIN" || user?.role === "MANAGER") ? (
+                          <button
+                            disabled={confirmingRemittanceId === rem.id}
+                            onClick={() => handleConfirmRemittance(rem.id)}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition shadow-xs flex items-center space-x-1 mx-auto cursor-pointer"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>{confirmingRemittanceId === rem.id ? "تصدیق ہو رہی ہے..." : "وصول پایا"}</span>
+                          </button>
+                        ) : (
+                          <span className="text-[11px] text-slate-400">
+                            {rem.confirmedAt ? new Date(rem.confirmedAt).toLocaleDateString() : "محفوظ"}
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -1317,6 +1632,341 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Cashier Handover Verification Modal (Store Manager) */}
+      {verifyingHandoverShift && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                  <CheckCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">
+                    کیش ہینڈ اوور کی تصدیق برائے مینیجر
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    کیشیئر: {verifyingHandoverShift.cashier?.fullName || verifyingHandoverShift.cashier?.username} · Shift #{verifyingHandoverShift.shiftNumber || "1"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setVerifyingHandoverShift(null)}
+                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4 flex-1 min-h-0 overflow-y-auto">
+              {/* Declared Handover Amount */}
+              <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 space-y-1">
+                <div className="flex justify-between items-center text-xs text-amber-950 font-semibold">
+                  <span>کیشیئر کی اعلان کردہ رقم (Cashier Handover Amount):</span>
+                  <span className="text-lg font-black text-amber-900">
+                    {formatCurrency(verifyingHandoverShift.handover?.handoverAmount ?? verifyingHandoverShift.closingCash ?? 0)}
+                  </span>
+                </div>
+                {verifyingHandoverShift.handover?.cashierNotes && (
+                  <p className="text-[11px] text-slate-600 italic border-t border-amber-100 pt-1">
+                    کیشیئر نوٹ: "{verifyingHandoverShift.handover.cashierNotes}"
+                  </p>
+                )}
+              </div>
+
+              {/* Actual Counted Amount */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  مینیجر نے گن کر کتنا کیش وصول کیا؟ (Actual Cash Counted by Manager):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={verifiedAmount}
+                    onChange={(e) => setVerifiedAmount(e.target.value)}
+                    className="w-full px-3 py-2.5 bg-white border-2 border-emerald-500 rounded-xl font-black text-slate-900 text-base focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setVerifiedAmount(verifyingHandoverShift.handover?.handoverAmount ?? verifyingHandoverShift.closingCash ?? 0)}
+                    className="absolute right-2 top-2 px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold rounded-lg text-xs transition"
+                  >
+                    پورا کیش (Exact)
+                  </button>
+                </div>
+              </div>
+
+              {/* Discrepancy Live Badge */}
+              {(() => {
+                const declared = verifyingHandoverShift.handover?.handoverAmount ?? verifyingHandoverShift.closingCash ?? 0;
+                const actual = parseFloat(String(verifiedAmount)) || 0;
+                const diff = actual - declared;
+                if (diff === 0) {
+                  return (
+                    <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center space-x-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>✅ رقم 100% پوری موصول ہوئی (کوئی شارٹیج یا فرق نہیں ہے)</span>
+                    </div>
+                  );
+                } else if (diff < 0) {
+                  return (
+                    <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-800 font-semibold flex items-center space-x-2">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>
+                        ⚠️ کیش میں کمی (Shortage): <strong>Rs. {formatNumber(Math.abs(diff))}</strong> کم موصول ہوئے۔ یہ شارٹیج رجسٹر میں ریکارڈ ہوگی۔
+                      </span>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="p-3 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-800 font-semibold flex items-center space-x-2">
+                      <TrendingUp className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span>
+                        ℹ️ کیش میں اضافہ (Surplus): <strong>Rs. {formatNumber(diff)}</strong> زیادہ موصول ہوئے۔
+                      </span>
+                    </div>
+                  );
+                }
+              })()}
+
+              {/* Manager Audit Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  مینیجر کا نوٹ / ریمارکس (Manager Verification Notes):
+                </label>
+                <textarea
+                  rows={2}
+                  value={managerHandoverNotes}
+                  onChange={(e) => setManagerHandoverNotes(e.target.value)}
+                  placeholder="مثلاً: کیش گن کر پورا وصول پایا یا 50 روپے کم ملے..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                disabled={handoverSubmitting}
+                onClick={() => handleVerifyAndAcceptHandover("REJECT")}
+                className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition"
+              >
+                ❌ مسترد کریں (Reject)
+              </button>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setVerifyingHandoverShift(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  منسوخ (Cancel)
+                </button>
+                <button
+                  type="button"
+                  disabled={handoverSubmitting}
+                  onClick={() => handleVerifyAndAcceptHandover("ACCEPT")}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5 cursor-pointer"
+                >
+                  {handoverSubmitting ? (
+                    <span>تصدیق ہو رہی ہے...</span>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      <span>کیش وصولی تصدیق کریں (Accept Handover)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Cash to Owner Modal */}
+      {remittanceModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <form
+            onSubmit={handleSubmitRemittance}
+            className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-auto max-h-[calc(100vh-2rem)] flex flex-col"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <Landmark className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">
+                    مالک / ایڈمن کو رقم کی منتقلی (Transfer Cash to Owner)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    اسٹور مینیجر کی جانب سے دکان کی نقد رقم یا منافع مالک کو جمع کروانا
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRemittanceModalOpen(false)}
+                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4 flex-1 min-h-0 overflow-y-auto">
+              {/* Available Cash in Hand Notice */}
+              <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 flex justify-between items-center">
+                <div>
+                  <span className="text-xs text-emerald-900 font-semibold block">مینیجر کے پاس دستیاب کیش (Cash in Hand):</span>
+                  <span className="text-[10px] text-emerald-700">دکان کی تجوری میں موجود کل رقم</span>
+                </div>
+                <span className="text-xl font-black text-emerald-700">
+                  Rs. {formatNumber(remittanceData?.balance?.currentCashInHand || 0)}
+                </span>
+              </div>
+
+              {/* Amount input & quick chips */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  مالک کو ادا کی جانے والی رقم (Amount in PKR) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="any"
+                  value={remittanceAmount}
+                  onChange={(e) => setRemittanceAmount(e.target.value)}
+                  placeholder="مثلاً: 25000"
+                  className="w-full px-3.5 py-2.5 bg-white border-2 border-indigo-500 rounded-xl font-black text-slate-900 text-base focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[5000, 10000, 20000, 50000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setRemittanceAmount(String(amt))}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition"
+                    >
+                      Rs. {formatNumber(amt)}
+                    </button>
+                  ))}
+                  {(remittanceData?.balance?.currentCashInHand ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRemittanceAmount(String(remittanceData?.balance?.currentCashInHand || 0))}
+                      className="px-2.5 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs font-black rounded-lg transition"
+                    >
+                      تمام کیش (All Rs. {formatNumber(remittanceData?.balance?.currentCashInHand || 0)})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Recipient Admin / Owner */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  کس مالک / ایڈمن کو دی جا رہی ہے؟ (Recipient Owner / Admin)
+                </label>
+                {remittanceData?.admins && remittanceData.admins.length > 0 ? (
+                  <select
+                    value={remittanceOwnerId}
+                    onChange={(e) => {
+                      setRemittanceOwnerId(e.target.value);
+                      const adm = remittanceData.admins.find((a: any) => a.id === e.target.value);
+                      if (adm) setRemittanceOwnerName(adm.fullName || adm.username);
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  >
+                    {remittanceData.admins.map((adm: any) => (
+                      <option key={adm.id} value={adm.id}>
+                        {adm.fullName || adm.username} ({adm.role})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={remittanceOwnerName}
+                    onChange={(e) => setRemittanceOwnerName(e.target.value)}
+                    placeholder="مالک / ایڈمن کا نام"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-medium text-slate-800"
+                  />
+                )}
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  ادائیگی کا طریقہ کار (Payment Method)
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "CASH", label: "💵 نقد (Cash)" },
+                    { id: "BANK_TRANSFER", label: "🏦 بینک ٹرانسفر" },
+                    { id: "CHEQUE", label: "📝 چیک" },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setRemittanceMethod(m.id)}
+                      className={`py-2 px-2 rounded-xl text-xs font-bold border-2 transition text-center cursor-pointer ${
+                        remittanceMethod === m.id
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-900"
+                          : "border-slate-200 hover:border-slate-300 bg-white text-slate-700"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes / Purpose */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  تفصیل / مقصد (Notes / Purpose):
+                </label>
+                <textarea
+                  rows={2}
+                  value={remittanceNotes}
+                  onChange={(e) => setRemittanceNotes(e.target.value)}
+                  placeholder="مثلاً: 10 دن کی جمع شدہ سیل کیش / ماہانہ منافع ادائیگی..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setRemittanceModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                منسوخ (Cancel)
+              </button>
+              <button
+                type="submit"
+                disabled={remittanceSubmitting}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center space-x-1.5 cursor-pointer"
+              >
+                {remittanceSubmitting ? (
+                  <span>محفوظ ہو رہا ہے...</span>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>ادائیگی جمع کروائیں (Submit Remittance)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

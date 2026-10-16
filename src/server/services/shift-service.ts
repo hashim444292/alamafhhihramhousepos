@@ -207,7 +207,8 @@ export class ShiftService {
     shiftId: string,
     manager: { id: string; fullName: string },
     action: "ACCEPT" | "REJECT" = "ACCEPT",
-    managerNotes?: string
+    managerNotes?: string,
+    receivedAmount?: number
   ) {
     const shift = await db.shift.findUnique({
       where: { id: shiftId },
@@ -219,19 +220,39 @@ export class ShiftService {
     }
 
     const existingHandover = parseShiftHandover(shift.notes);
+    const expectedHandoverAmount = existingHandover?.handoverAmount ?? (shift.closingCash || 0);
+    const actualReceived = action === "ACCEPT" ? (receivedAmount !== undefined ? receivedAmount : expectedHandoverAmount) : 0;
+    const handoverDiscrepancy = action === "ACCEPT" ? actualReceived - expectedHandoverAmount : 0;
+
+    let defaultNote = "";
+    if (action === "ACCEPT") {
+      if (handoverDiscrepancy === 0) {
+        defaultNote = "کیش ہینڈ اوور پورا وصول پایا اور تصدیق کی گئی۔ (Full cash handover verified & accepted)";
+      } else if (handoverDiscrepancy < 0) {
+        defaultNote = `کیش ہینڈ اوور میں کمی: Rs. ${Math.abs(handoverDiscrepancy)} کم وصول ہوئے۔ مطلوبہ: Rs. ${expectedHandoverAmount}، وصول شدہ: Rs. ${actualReceived}`;
+      } else {
+        defaultNote = `کیش ہینڈ اوور میں اضافہ: Rs. ${handoverDiscrepancy} زیادہ وصول ہوئے۔ مطلوبہ: Rs. ${expectedHandoverAmount}، وصول شدہ: Rs. ${actualReceived}`;
+      }
+    } else {
+      defaultNote = "کیش ہینڈ اوور مسترد کیا گیا۔ (Handover rejected)";
+    }
+
     const updatedHandover: ShiftHandoverData = {
-      handoverAmount: existingHandover?.handoverAmount ?? (shift.closingCash || 0),
+      handoverAmount: expectedHandoverAmount,
+      receivedAmount: action === "ACCEPT" ? actualReceived : undefined,
+      handoverDiscrepancy: action === "ACCEPT" ? handoverDiscrepancy : undefined,
       handoverStatus: action === "ACCEPT" ? "ACCEPTED" : "REJECTED",
       handoverTo: manager.fullName,
       handoverManagerId: manager.id,
       handoverManagerName: manager.fullName,
       handoverAcceptedAt: new Date().toISOString(),
-      handoverNotes:
-        managerNotes ||
-        (action === "ACCEPT"
-          ? "کیش ہینڈ اوور وصول پایا اور تصدیق کی گئی۔ (Cash handover verified & accepted)"
-          : "کیش ہینڈ اوور مسترد کیا گیا۔ (Handover rejected)"),
+      handoverNotes: managerNotes || defaultNote,
       cashierNotes: existingHandover?.cashierNotes || "",
+      shortageSettlementStatus: existingHandover?.shortageSettlementStatus,
+      shortageSettlementType: existingHandover?.shortageSettlementType,
+      shortageSettledBy: existingHandover?.shortageSettledBy,
+      shortageSettledAt: existingHandover?.shortageSettledAt,
+      shortageSettlementNotes: existingHandover?.shortageSettlementNotes,
     };
 
     const updated = await db.shift.update({

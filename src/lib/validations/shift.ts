@@ -16,6 +16,7 @@ export const CloseShiftSchema = z.object({
 export const AcceptHandoverSchema = z.object({
   shiftId: z.string().min(1, "Shift ID is required"),
   action: z.enum(["ACCEPT", "REJECT"]).default("ACCEPT"),
+  receivedAmount: z.number().nonnegative().optional(),
   notes: z.string().optional(),
 });
 

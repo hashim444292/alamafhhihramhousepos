@@ -343,3 +343,28 @@ model Expense {
   @@index([date])
   @@map("expenses")
 }
+
+// ==========================================
+// MANAGER TO OWNER CASH REMITTANCES
+// ==========================================
+
+model ManagerRemittance {
+  id               String    @id @default(uuid())
+  remittanceNumber String    @unique
+  amount           Float
+  paymentMethod    String    @default("CASH") // CASH, BANK_TRANSFER, CHEQUE, ONLINE
+  status           String    @default("CONFIRMED") // PENDING, CONFIRMED, REJECTED
+  managerId        String
+  managerName      String
+  ownerId          String?
+  ownerName        String?
+  remittedAt       DateTime  @default(now())
+  confirmedAt      DateTime?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([status])
+  @@index([remittedAt])
+  @@map("manager_remittances")
+}

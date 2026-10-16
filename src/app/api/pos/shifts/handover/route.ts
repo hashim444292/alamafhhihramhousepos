@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
       parsed.data.shiftId,
       { id: user.id, fullName: user.fullName },
       parsed.data.action,
-      parsed.data.notes
+      parsed.data.notes,
+      parsed.data.receivedAmount
     );
 
     return NextResponse.json({

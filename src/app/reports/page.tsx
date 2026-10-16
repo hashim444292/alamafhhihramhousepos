@@ -26,6 +26,8 @@ import {
   AlertCircle,
   AlertTriangle,
   ShieldAlert,
+  Banknote,
+  Landmark,
 } from "lucide-react";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { formatCurrency, formatNumber } from "@/lib/format-utils";
@@ -35,7 +37,7 @@ import { useAuthStore } from "@/store/auth-store";
 export default function ReportsPage() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<
-    "accounting" | "sales" | "purchases" | "expenses" | "customers" | "suppliers" | "shifts" | "damages"
+    "accounting" | "sales" | "purchases" | "expenses" | "customers" | "suppliers" | "shifts" | "damages" | "remittances"
   >("sales");
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export default function ReportsPage() {
       const tabParam = params.get("tab");
       if (
         tabParam &&
-        ["accounting", "sales", "purchases", "expenses", "customers", "suppliers", "shifts", "damages"].includes(tabParam)
+        ["accounting", "sales", "purchases", "expenses", "customers", "suppliers", "shifts", "damages", "remittances"].includes(tabParam)
       ) {
         setActiveTab(tabParam as any);
         return;
@@ -81,6 +83,12 @@ export default function ReportsPage() {
   const [shiftData, setShiftData] = useState<any[]>([]);
   const [damageLossData, setDamageLossData] = useState<any[]>([]);
   const [damageTypeFilter, setDamageTypeFilter] = useState<"ALL" | "DAMAGE" | "STOLEN">("ALL");
+  const [remittanceData, setRemittanceData] = useState<{
+    remittances: any[];
+    balance: any;
+    admins: any[];
+  } | null>(null);
+  const [remittanceStatusFilter, setRemittanceStatusFilter] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -225,6 +233,29 @@ export default function ReportsPage() {
           }
         }
       }
+      // 9. Manager to Owner Remittances Ledger
+      else if (activeTab === "remittances") {
+        const queryParams = new URLSearchParams({
+          limit: "500",
+          status: remittanceStatusFilter,
+        });
+        const res = await fetch(`/api/remittances?${queryParams.toString()}`);
+        const data = await res.json();
+        if (data.success) {
+          setRemittanceData({
+            remittances: data.remittances || [],
+            balance: data.balance || {
+              currentCashInHand: 0,
+              totalCashRemitted: 0,
+              pendingRemittancesAmount: 0,
+              pendingRemittancesCount: 0,
+              totalCashCollected: 0,
+              totalCashExpenses: 0,
+            },
+            admins: data.admins || [],
+          });
+        }
+      }
     } catch (e) {
       console.error("Failed to load report data:", e);
     } finally {
@@ -250,7 +281,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadReportData();
-  }, [activeTab, startDate, endDate, selectedSupplierId, selectedCustomerId, selectedCashierId]);
+  }, [activeTab, startDate, endDate, selectedSupplierId, selectedCustomerId, selectedCashierId, remittanceStatusFilter]);
 
   const handlePrint = () => {
     window.print();
@@ -453,6 +484,18 @@ export default function ReportsPage() {
             <AlertTriangle className="w-4 h-4 text-rose-300" />
             <span>Loss & Damages (ٹوٹ پھوٹ و چوری)</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("remittances")}
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center space-x-1.5 transition ${
+              activeTab === "remittances"
+                ? "bg-indigo-700 text-white shadow-sm"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            <Banknote className="w-4 h-4 text-indigo-300" />
+            <span>Owner Remittances (مالک کو کیش ادائیگیاں)</span>
+          </button>
         </div>
 
         {/* Date Filters & Presets (Weekly, Monthly, Custom) */}
@@ -572,6 +615,21 @@ export default function ReportsPage() {
                   <option value="ALL">All Types (ٹوٹ پھوٹ و چوری دونوں)</option>
                   <option value="DAMAGE">🔨 Broken Only (صرف ٹوٹ پھوٹ)</option>
                   <option value="STOLEN">🕵️ Stolen Only (صرف چوری / لاپتہ)</option>
+                </select>
+              </div>
+            )}
+
+            {activeTab === "remittances" && (
+              <div className="flex items-center space-x-1 mr-2">
+                <span className="font-semibold text-slate-600">اسٹیٹس (Status):</span>
+                <select
+                  value={remittanceStatusFilter}
+                  onChange={(e) => setRemittanceStatusFilter(e.target.value)}
+                  className="px-2 py-1 border rounded text-xs bg-slate-50 font-bold"
+                >
+                  <option value="ALL">All Remittances (تمام ادائیگیاں)</option>
+                  <option value="CONFIRMED">✅ Confirmed Only (وصول شدہ)</option>
+                  <option value="PENDING">⏳ Pending Only (منتظر تصدیق)</option>
                 </select>
               </div>
             )}
@@ -1976,6 +2034,177 @@ export default function ReportsPage() {
                           </td>
                           <td colSpan={2} className="py-3 px-3 text-slate-500 text-right">
                             {filteredLossMovements.length} واقعات
+                          </td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 9. MANAGER TO OWNER CASH REMITTANCES REPORT (مینیجر تا مالک کیش ادائیگی آڈٹ رپورٹ) */}
+        {activeTab === "remittances" && (() => {
+          const remittances = remittanceData?.remittances || [];
+          const balance = remittanceData?.balance || {
+            currentCashInHand: 0,
+            totalCashRemitted: 0,
+            pendingRemittancesAmount: 0,
+            pendingRemittancesCount: 0,
+            totalCashCollected: 0,
+            totalCashExpenses: 0,
+          };
+
+          return (
+            <div className="space-y-6">
+              {/* Executive Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+                  <span className="text-xs text-slate-500 font-semibold block">
+                    کل وصول شدہ کیش (Cash from Shifts)
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
+                    Rs. {formatNumber(balance.totalCashCollected)}
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-0.5 block">
+                    کیشیئرز کے منظور شدہ شفٹ ہینڈ اوورز
+                  </span>
+                </div>
+
+                <div className="bg-rose-50/60 border border-rose-200 p-4 rounded-xl">
+                  <span className="text-xs text-rose-800 font-semibold block">
+                    دکان کے کیش اخراجات (Cash Petty Expenses)
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-rose-700 mt-1">
+                    Rs. {formatNumber(balance.totalCashExpenses)}
+                  </div>
+                  <span className="text-[10px] text-rose-600 mt-0.5 block">
+                    دکان کے روزمرہ پیٹی کیش اخراجات
+                  </span>
+                </div>
+
+                <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-xl">
+                  <span className="text-xs text-indigo-900 font-semibold block">
+                    مالک کو ادا شدہ رقم (Total Remitted to Owner)
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-indigo-950 mt-1">
+                    Rs. {formatNumber(balance.totalCashRemitted)}
+                  </div>
+                  <span className="text-[10px] text-indigo-700 mt-0.5 block">
+                    {balance.totalRemittancesCount || 0} ادائیگیاں تصدیق شدہ
+                  </span>
+                </div>
+
+                <div className="bg-emerald-50 border-2 border-emerald-400 p-4 rounded-xl shadow-xs">
+                  <span className="text-xs text-emerald-900 font-bold block">
+                    مینیجر کے پاس نقد کیش (Manager Net Cash in Hand)
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-emerald-700 mt-1">
+                    Rs. {formatNumber(balance.currentCashInHand)}
+                  </div>
+                  <span className="text-[10px] text-emerald-800 mt-0.5 block">
+                    موجودہ دستیاب کیش بیلنس (کلیکشن - اخراجات - ادائیگیاں)
+                  </span>
+                </div>
+              </div>
+
+              {/* Remittance Ledger Table */}
+              <div className="border rounded-2xl overflow-hidden shadow-xs bg-white">
+                <div className="p-4 bg-slate-50 border-b flex justify-between items-center flex-wrap gap-2">
+                  <div>
+                    <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
+                      <Landmark className="w-4 h-4 text-indigo-600" />
+                      <span>Manager to Owner Cash Remittance Vouchers Ledger</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      مینیجر کی جانب سے مالک یا ایڈمن کو منتقل کردہ رقوم کا مکمل اور شفاف آڈٹ ٹریل
+                    </p>
+                  </div>
+                  <button
+                    onClick={handlePrint}
+                    className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs flex items-center space-x-1 print:hidden"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print Ledger</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs sm:text-sm min-w-[750px]">
+                    <thead className="bg-slate-100/75 text-slate-700 font-bold border-b text-[11px] uppercase tracking-wider">
+                      <tr>
+                        <th className="py-3 px-3 w-10">#</th>
+                        <th className="py-3 px-3">واؤچر # / تاریخ</th>
+                        <th className="py-3 px-3">ادا کنندہ (مینیجر)</th>
+                        <th className="py-3 px-3">وصول کنندہ (مالک / ایڈمن)</th>
+                        <th className="py-3 px-3">طریقہ کار (Method)</th>
+                        <th className="py-3 px-3 text-right">رقم (Amount)</th>
+                        <th className="py-3 px-3 text-center">صورتحال (Status)</th>
+                        <th className="py-3 px-3">تفصیل و مقصد (Notes / Purpose)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {remittances.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-slate-400">
+                            کوئی کیش ادائیگی واؤچر ریکارڈ نہیں ملا۔ (No remittances recorded)
+                          </td>
+                        </tr>
+                      ) : (
+                        remittances.map((rem: any, idx: number) => (
+                          <tr key={rem.id} className="hover:bg-slate-50 transition">
+                            <td className="py-3 px-3 text-slate-400 font-mono">{idx + 1}</td>
+                            <td className="py-3 px-3 text-slate-800">
+                              <div className="font-bold">{rem.remittanceNumber}</div>
+                              <div className="text-[10px] text-slate-400">
+                                {rem.remittedAt ? new Date(rem.remittedAt).toLocaleString() : "-"}
+                              </div>
+                            </td>
+                            <td className="py-3 px-3 text-slate-800 font-semibold">
+                              {rem.managerName || "Store Manager"}
+                            </td>
+                            <td className="py-3 px-3 text-slate-800">
+                              {rem.ownerName || "Owner / Admin"}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
+                                {rem.paymentMethod === "CASH" ? "💵 نقد کیش" : rem.paymentMethod === "BANK_TRANSFER" ? "🏦 بینک ٹرانسفر" : rem.paymentMethod}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-right font-black text-indigo-950 text-sm">
+                              {formatCurrency(rem.amount)}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              {rem.status === "CONFIRMED" ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  ✅ وصول شدہ ({rem.confirmedAt ? new Date(rem.confirmedAt).toLocaleDateString() : "Confirmed"})
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                  ⏳ منتظر تصدیق
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-xs text-slate-600 max-w-xs">
+                              {rem.notes || "-"}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    {remittances.length > 0 && (
+                      <tfoot className="bg-slate-100 font-bold text-xs border-t-2 border-slate-300">
+                        <tr>
+                          <td colSpan={5} className="py-3 px-3 text-slate-900 font-black">
+                            کل منتقل شدہ رقم (Total Remittances Amount):
+                          </td>
+                          <td className="py-3 px-3 text-right text-indigo-950 font-black text-sm">
+                            {formatCurrency(balance.totalCashRemitted)}
+                          </td>
+                          <td colSpan={2} className="py-3 px-3 text-slate-500 text-right">
+                            {remittances.length} واؤچرز
                           </td>
                         </tr>
                       </tfoot>
