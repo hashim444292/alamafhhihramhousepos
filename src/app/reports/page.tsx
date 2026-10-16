@@ -1602,7 +1602,7 @@ export default function ReportsPage() {
                           {formatCurrency(sh.totalSalesAmount)}
                         </td>
                         <td className="py-2.5 px-3 text-right font-semibold text-slate-800">
-                          {formatCurrency(sh.systemExpectedCash || sh.openingCash)}
+                          {formatCurrency(sh.systemExpectedCash ?? sh.openingCash)}
                         </td>
                         <td className="py-2.5 px-3 text-right font-bold text-slate-900">
                           {sh.closingCash !== null && sh.closingCash !== undefined

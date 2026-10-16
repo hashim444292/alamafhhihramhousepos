@@ -24,9 +24,9 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
   const { user } = useAuthStore();
   const { activeShift, setActiveShift } = usePosStore();
 
-  const [openingCashInput, setOpeningCashInput] = useState<number>(0);
-  const [closingCashInput, setClosingCashInput] = useState<number>(0);
-  const [handoverCashInput, setHandoverCashInput] = useState<number>(0);
+  const [openingCashInput, setOpeningCashInput] = useState<number | string>(0);
+  const [closingCashInput, setClosingCashInput] = useState<number | string>(0);
+  const [handoverCashInput, setHandoverCashInput] = useState<number | string>(0);
   const [shiftNotes, setShiftNotes] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [zReportData, setZReportData] = useState<any | null>(null);
@@ -68,11 +68,14 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
   const handleOpenShift = async () => {
     setLoading(true);
     try {
+      const parsedCash = typeof openingCashInput === "string" ? parseFloat(openingCashInput) : openingCashInput;
+      const finalOpeningCash = isNaN(parsedCash) || parsedCash < 0 ? 0 : parsedCash;
+
       const res = await fetch("/api/pos/shifts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          openingCash: openingCashInput,
+          openingCash: finalOpeningCash,
           notes: shiftNotes || "Cashier register opened",
         }),
       });
@@ -97,13 +100,19 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
 
     setLoading(true);
     try {
+      const parsedClosing = typeof closingCashInput === "string" ? parseFloat(closingCashInput) : closingCashInput;
+      const finalClosingCash = isNaN(parsedClosing) || parsedClosing < 0 ? 0 : parsedClosing;
+
+      const parsedHandover = typeof handoverCashInput === "string" ? parseFloat(handoverCashInput) : handoverCashInput;
+      const finalHandoverCash = isNaN(parsedHandover) || parsedHandover < 0 ? finalClosingCash : parsedHandover;
+
       const res = await fetch("/api/pos/shifts/close", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shiftId: activeShift.id,
-          closingCash: closingCashInput,
-          handoverCash: handoverCashInput || closingCashInput,
+          closingCash: finalClosingCash,
+          handoverCash: finalHandoverCash,
           notes: shiftNotes,
         }),
       });
@@ -273,15 +282,16 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                     <input
                       type="number"
                       step="any"
-                      value={closingCashInput || ""}
+                      min="0"
+                      value={closingCashInput}
                       onChange={(e) => {
-                        const val = Number(e.target.value);
+                        const val = e.target.value;
                         setClosingCashInput(val);
-                        if (!handoverCashInput || handoverCashInput === closingCashInput) {
+                        if (handoverCashInput === "" || handoverCashInput === closingCashInput) {
                           setHandoverCashInput(val);
                         }
                       }}
-                      placeholder="Count and enter physical cash..."
+                      placeholder="0"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
@@ -299,9 +309,10 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                       <input
                         type="number"
                         step="any"
-                        value={handoverCashInput || ""}
-                        onChange={(e) => setHandoverCashInput(Number(e.target.value))}
-                        placeholder="مینیجر کو دی جانے والی رقم..."
+                        min="0"
+                        value={handoverCashInput}
+                        onChange={(e) => setHandoverCashInput(e.target.value)}
+                        placeholder="0"
                         className="w-full px-3 py-2 border border-indigo-300 bg-indigo-50/30 rounded-lg text-sm font-black text-indigo-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       />
                       <p className="text-[10px] text-slate-500 mt-1">
@@ -404,23 +415,36 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl text-xs text-blue-900">
-                  یہ سسٹم کی پہلی رجسٹر شفٹ ہے۔ دراز میں موجود ابتدائی اوپننگ کیش (Float) درج کر کے شفٹ شروع کریں۔
+                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-950 space-y-1">
+                  <div className="font-bold flex items-center space-x-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>نیا آغاز / پہلا رجسٹر (Fresh Shift Start)</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 leading-relaxed">
+                    دراز میں موجود ابتدائی رقم درج کریں۔ <strong>اگر دراز میں کیش موجود نہیں ہے یا دراز خالی ہے تو آپ 0 درج کر کے بھی شفٹ شروع کر سکتے ہیں۔</strong>
+                  </p>
                 </div>
               )}
 
               {/* Opening Cash Input */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800">
-                  گن کر دراز میں موجود کیش درج کریں (Counted Opening Cash in Drawer)
-                </label>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold text-slate-800">
+                    گن کر دراز میں موجود کیش درج کریں (Counted Opening Cash in Drawer)
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    0 روپے بھی قابل قبول ہے
+                  </span>
+                </div>
+
                 <div className="relative">
                   <input
                     type="number"
                     step="any"
-                    value={openingCashInput || ""}
-                    onChange={(e) => setOpeningCashInput(Number(e.target.value))}
-                    placeholder="مثلاً 500 یا پچھلی کلوزنگ کی رقم..."
+                    min="0"
+                    value={openingCashInput}
+                    onChange={(e) => setOpeningCashInput(e.target.value)}
+                    placeholder="0"
                     className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-base font-black text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                   <span className="absolute right-3 top-3 text-xs font-bold text-slate-400">
@@ -428,17 +452,79 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                   </span>
                 </div>
 
+                {/* Quick Float Selection Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] font-bold text-slate-500">فوری انتخاب:</span>
+                  <button
+                    type="button"
+                    onClick={() => setOpeningCashInput(0)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition ${
+                      Number(openingCashInput) === 0
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    0 روپے (بغیر کیش)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpeningCashInput(500)}
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold border transition ${
+                      Number(openingCashInput) === 500
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    500 روپے
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpeningCashInput(1000)}
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold border transition ${
+                      Number(openingCashInput) === 1000
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    1,000 روپے
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpeningCashInput(5000)}
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold border transition ${
+                      Number(openingCashInput) === 5000
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                    }`}
+                  >
+                    5,000 روپے
+                  </button>
+                  {lastClosedShift && lastClosedShift.closingCash > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setOpeningCashInput(lastClosedShift.closingCash)}
+                      className={`px-2 py-1 rounded-lg text-xs font-bold border transition ${
+                        Number(openingCashInput) === lastClosedShift.closingCash
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                          : "bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200"
+                      }`}
+                    >
+                      پچھلی کلوزنگ: {formatCurrency(lastClosedShift.closingCash)}
+                    </button>
+                  )}
+                </div>
+
                 {/* Real-time Handover Difference Audit */}
                 {lastClosedShift && (
                   <div
                     className={`text-xs p-2.5 rounded-lg border flex items-center justify-between ${
-                      openingCashInput === lastClosedShift.closingCash
+                      Number(openingCashInput) === lastClosedShift.closingCash
                         ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                         : "bg-rose-50 border-rose-200 text-rose-700"
                     }`}
                   >
                     <span className="font-medium flex items-center space-x-1">
-                      {openingCashInput === lastClosedShift.closingCash ? (
+                      {Number(openingCashInput) === lastClosedShift.closingCash ? (
                         <>
                           <CheckCircle className="w-3.5 h-3.5 text-emerald-600 inline mr-1" />
                           <span>رقم پچھلی کلوزنگ سے بالکل برابر ہے (Perfect Match)</span>
@@ -451,7 +537,7 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
                       )}
                     </span>
                     <span className="font-black text-xs">
-                      فرق: {formatCurrency(openingCashInput - lastClosedShift.closingCash)}
+                      فرق: {formatCurrency(Number(openingCashInput) - lastClosedShift.closingCash)}
                     </span>
                   </div>
                 )}

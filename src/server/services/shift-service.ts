@@ -71,7 +71,7 @@ export class ShiftService {
     for (const s of mappedShifts) {
       totalOpeningCash += s.openingCash;
       totalSales += s.totalSalesAmount;
-      totalExpectedCash += (s.systemExpectedCash || s.openingCash);
+      totalExpectedCash += (s.systemExpectedCash ?? s.openingCash);
 
       if (s.status === "CLOSED" && s.closingCash !== null && s.closingCash !== undefined) {
         closedShiftsCount++;
