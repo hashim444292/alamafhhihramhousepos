@@ -263,10 +263,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col my-auto max-h-[calc(100vh-2rem)]">
         {/* Modal Header */}
-        <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div className="px-5 py-3.5 sm:py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div>
             <h3 className="font-bold text-base text-white">Select Payment Method</h3>
             <p className="text-xs text-slate-400">
@@ -290,7 +290,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-4">
+        <div className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-4">
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-lg flex items-center">
               <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -655,7 +655,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-200 flex space-x-3">
+        <div className="p-4 bg-slate-50 border-t border-slate-200 flex space-x-3 shrink-0">
           <button
             onClick={onClose}
             className="flex-1 py-3 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-100 transition"

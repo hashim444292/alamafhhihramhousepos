@@ -77,10 +77,10 @@ export const ThermalReceipt: React.FC<ReceiptProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col my-auto max-h-[calc(100vh-2rem)]">
         {/* Screen Only Header */}
-        <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between print:hidden">
+        <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0 print:hidden">
           <div className="flex items-center space-x-2">
             <Printer className="w-4 h-4 text-emerald-400" />
             <span className="font-semibold text-sm">Receipt Preview ({width})</span>
@@ -105,7 +105,7 @@ export const ThermalReceipt: React.FC<ReceiptProps> = ({
         </div>
 
         {/* Printable Receipt Paper Container */}
-        <div className="p-6 overflow-y-auto flex justify-center bg-slate-100 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto flex justify-center bg-slate-100 flex-1 min-h-0">
           <div
             id="thermal-receipt-area"
             className={`bg-white p-4 shadow-sm font-mono text-slate-900 text-xs leading-normal ${

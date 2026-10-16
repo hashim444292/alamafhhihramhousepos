@@ -134,10 +134,10 @@ export const ReportLossModal: React.FC<ReportLossModalProps> = ({
     .reduce((sum, m) => sum + Math.abs(m.quantity || 0), 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col my-auto max-h-[calc(100vh-2rem)]">
         {/* Header */}
-        <div className="px-5 py-3.5 bg-rose-950 text-white flex items-center justify-between">
+        <div className="px-5 py-3.5 bg-rose-950 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
             <AlertTriangle className="w-5 h-5 text-rose-400" />
             <span className="font-bold text-sm">
@@ -153,7 +153,7 @@ export const ReportLossModal: React.FC<ReportLossModalProps> = ({
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex border-b border-slate-200 bg-slate-50 px-3 pt-2 gap-2">
+        <div className="flex border-b border-slate-200 bg-slate-50 px-3 pt-2 gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab("report")}
@@ -183,7 +183,7 @@ export const ReportLossModal: React.FC<ReportLossModalProps> = ({
 
         {/* TAB 1: REPORT FORM */}
         {activeTab === "report" && (
-          <form onSubmit={handleSubmit} className="p-5 space-y-3.5 overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 flex-1 min-h-0 overflow-y-auto">
             {error && (
               <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs font-semibold flex items-center space-x-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -345,7 +345,7 @@ export const ReportLossModal: React.FC<ReportLossModalProps> = ({
 
         {/* TAB 2: HISTORY LOG VIEW */}
         {activeTab === "history" && (
-          <div className="p-4 space-y-3 overflow-y-auto flex-1 flex flex-col">
+          <div className="p-4 space-y-3 overflow-y-auto flex-1 min-h-0 flex flex-col">
             {/* Summary Strip */}
             <div className="grid grid-cols-3 gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-center">
               <div>

@@ -349,9 +349,9 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
 
       {/* Customer Selection Modal (Janne Wale vs Walk-in) */}
       {customerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] flex flex-col">
-            <h3 className="font-bold text-base text-slate-900 flex items-center space-x-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-5 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <h3 className="font-bold text-base text-slate-900 flex items-center space-x-2 shrink-0">
               <UserCheck className="w-5 h-5 text-emerald-600" />
               <span>Select Customer / Khata (گاہک منتخب کریں)</span>
             </h3>
@@ -435,9 +435,9 @@ export const CartPane: React.FC<CartPaneProps> = ({ onPayClick, onKhataClick }) 
 
       {/* Discount Modal */}
       {discountModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-5 space-y-4">
-            <h3 className="font-bold text-sm text-slate-900">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-4 sm:p-5 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col overflow-y-auto">
+            <h3 className="font-bold text-sm text-slate-900 shrink-0">
               {activeItemForDiscount ? `Discount: ${activeItemForDiscount.name}` : "Cart Discount"}
             </h3>
 

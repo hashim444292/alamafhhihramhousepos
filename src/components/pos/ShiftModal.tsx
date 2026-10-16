@@ -122,10 +122,10 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col my-auto max-h-[calc(100vh-2rem)]">
         {/* Header */}
-        <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div className="px-5 py-3.5 sm:py-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
             <Clock className="w-5 h-5 text-emerald-400" />
             <span className="font-bold text-sm">
@@ -148,7 +148,7 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-5 overflow-y-auto space-y-4">
+        <div className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-4">
           {isLogoutFlow && !zReportData && (
             <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs font-bold flex items-center space-x-2">
               <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />

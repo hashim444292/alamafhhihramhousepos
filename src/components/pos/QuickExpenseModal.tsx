@@ -70,10 +70,10 @@ export const QuickExpenseModal: React.FC<QuickExpenseModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col my-auto max-h-[calc(100vh-2rem)]">
         {/* Header */}
-        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
             <Receipt className="w-5 h-5 text-amber-400" />
             <span className="font-bold text-sm">
@@ -89,7 +89,7 @@ export const QuickExpenseModal: React.FC<QuickExpenseModalProps> = ({
         </div>
 
         {/* Content Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto space-y-3.5">
           {error && (
             <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs font-semibold flex items-center space-x-2">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />

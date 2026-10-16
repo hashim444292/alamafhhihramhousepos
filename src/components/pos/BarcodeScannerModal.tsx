@@ -55,9 +55,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
-        <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col my-auto max-h-[calc(100vh-2rem)]">
+        <div className="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
             <Camera className="w-5 h-5 text-emerald-400" />
             <span className="font-bold text-sm">Scan Product Barcode</span>
@@ -67,7 +67,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4 flex flex-col items-center">
+        <div className="p-4 flex flex-col items-center flex-1 min-h-0 overflow-y-auto">
           <p className="text-xs text-slate-500 mb-3 text-center">
             Point camera at the barcode on the Ihram set or accessory packaging
           </p>

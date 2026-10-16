@@ -779,9 +779,9 @@ export default function InventoryPage() {
 
       {/* Record Purchase Restock Bill Modal (Proper Supplier Invoice & Auto Stock-In) */}
       {purchaseModalOpen && selectedProductForPurchase && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 my-8">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center space-x-2">
                   <Truck className="w-5 h-5 text-emerald-600" />
@@ -797,7 +797,7 @@ export default function InventoryPage() {
               </button>
             </div>
 
-            <form onSubmit={handleRecordPurchaseInvoice} className="space-y-3.5 text-xs">
+            <form onSubmit={handleRecordPurchaseInvoice} className="space-y-3.5 text-xs flex-1 min-h-0 overflow-y-auto pr-1">
               <div className="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 flex justify-between items-center">
                 <div>
                   <span className="text-slate-500 block text-[10px]">Product / SKU:</span>
@@ -1076,9 +1076,9 @@ export default function InventoryPage() {
 
       {/* Printable Purchase Order Bill Invoice Receipt Modal */}
       {lastCreatedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 my-8">
-            <div className="flex justify-between items-center border-b pb-3 print:hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0 print:hidden">
               <div className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-emerald-600" />
                 <h3 className="font-bold text-base text-slate-900">
@@ -1103,7 +1103,7 @@ export default function InventoryPage() {
             </div>
 
             {/* Printable Invoice Container */}
-            <div id="purchase-invoice-printable-area" className="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-3 text-xs print:bg-white print:border-none print:p-0">
+            <div id="purchase-invoice-printable-area" className="p-4 border border-slate-200 rounded-xl bg-slate-50 space-y-3 text-xs flex-1 min-h-0 overflow-y-auto print:bg-white print:border-none print:p-0">
               <div className="text-center border-b pb-2">
                 <h2 className="font-black text-base text-slate-900 uppercase tracking-tight">
                   Al-Afhhihram House
@@ -1201,9 +1201,9 @@ export default function InventoryPage() {
 
       {/* Barcode Stickers Printable Sheet Modal */}
       {barcodeModalOpen && selectedProductForBarcode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-3 print:hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0 print:hidden">
               <div>
                 <h3 className="font-bold text-base text-slate-900">
                   Printable Adhesive Barcode Labels
@@ -1228,7 +1228,7 @@ export default function InventoryPage() {
             </div>
 
             {/* Sticker Count Control (Screen Only) */}
-            <div className="flex items-center space-x-3 bg-slate-50 p-3 rounded-xl border print:hidden">
+            <div className="flex items-center space-x-3 bg-slate-50 p-3 rounded-xl border shrink-0 print:hidden">
               <span className="text-xs font-semibold text-slate-700">Labels to Generate:</span>
               {[6, 12, 24, 30].map((cnt) => (
                 <button
@@ -1306,9 +1306,9 @@ export default function InventoryPage() {
           }, 0);
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col">
-              <div className="flex justify-between items-center border-b pb-3">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+              <div className="flex justify-between items-center border-b pb-3 shrink-0">
                 <div className="flex items-center space-x-2">
                   {movementsTypeFilter === "LOSS" ? (
                     <AlertTriangle className="w-5 h-5 text-rose-600" />
@@ -1330,7 +1330,7 @@ export default function InventoryPage() {
               </div>
 
               {/* Filter Pills */}
-              <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+              <div className="flex items-center justify-between flex-wrap gap-2 text-xs shrink-0">
                 <div className="flex space-x-1">
                   <button
                     type="button"
@@ -1403,7 +1403,7 @@ export default function InventoryPage() {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto">
                 {movementsLoading ? (
                   <div className="py-12 text-center text-xs text-slate-400">
                     ریکارڈ لوڈ ہو رہا ہے... (Loading...)
@@ -1491,9 +1491,9 @@ export default function InventoryPage() {
       })()}
       {/* Add New Product Modal */}
       {addModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 space-y-4 my-8">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-base text-slate-900">+ Add New Product (نیا پروڈکٹ شامل کریں)</h3>
                 <p className="text-xs text-slate-500">Define product details, SKU, barcode, and PKR rates</p>
@@ -1506,7 +1506,7 @@ export default function InventoryPage() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateProduct} className="space-y-4 text-xs">
+            <form onSubmit={handleCreateProduct} className="space-y-4 text-xs flex-1 min-h-0 overflow-y-auto pr-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-700 mb-1">
@@ -1684,9 +1684,9 @@ export default function InventoryPage() {
 
       {/* Edit Product & Rates Modal */}
       {editModalOpen && selectedProductForEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-6 space-y-4 my-8">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-base text-slate-900">Edit Product & Rates (ریٹ اور تفصیلات تبدیل کریں)</h3>
                 <p className="text-xs text-slate-500">{selectedProductForEdit.name}</p>
@@ -1699,7 +1699,7 @@ export default function InventoryPage() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateProduct} className="space-y-4 text-xs">
+            <form onSubmit={handleUpdateProduct} className="space-y-4 text-xs flex-1 min-h-0 overflow-y-auto pr-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-700 mb-1">
@@ -1915,9 +1915,9 @@ export default function InventoryPage() {
       )}
       {/* Category Management Modal (Add, Edit, Delete Categories) */}
       {categoryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4 my-8">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-base text-slate-900 flex items-center space-x-2">
                   <FolderPlus className="w-5 h-5 text-emerald-600" />
@@ -1936,7 +1936,7 @@ export default function InventoryPage() {
             </div>
 
             {/* Category Form (Create or Edit) */}
-            <form onSubmit={handleSaveCategory} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            <form onSubmit={handleSaveCategory} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3 shrink-0">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-xs text-slate-800">
                   {editingCategoryId ? "✏️ Edit Category (کیٹیگری تبدیل کریں)" : "➕ Add New Category (نئی کیٹیگری شامل کریں)"}

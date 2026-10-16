@@ -610,9 +610,9 @@ export default function CustomersPage() {
 
       {/* Add / Edit Customer Modal */}
       {customerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0">
               <h3 className="font-bold text-base text-slate-900">
                 {editingCustomerId ? "Edit Customer Details" : "Add New Khata Customer (نیا گاہک)"}
               </h3>
@@ -621,7 +621,7 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveCustomer} className="space-y-3">
+            <form onSubmit={handleSaveCustomer} className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Customer Full Name *</label>
                 <input
@@ -754,9 +754,9 @@ export default function CustomersPage() {
 
       {/* Payment Received Modal (Udhaar recovery) */}
       {paymentModalOpen && activeCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-center border-b pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-base text-slate-900">
                   Receive Payment (ادھار وصولی: {activeCustomer.name})
@@ -770,7 +770,7 @@ export default function CustomersPage() {
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 min-h-0 overflow-y-auto pr-1">
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="block text-xs font-semibold text-slate-700">

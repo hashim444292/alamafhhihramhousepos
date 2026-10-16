@@ -1953,9 +1953,9 @@ export default function ReportsPage() {
           1. DETAILED INVOICE MODAL (مکمل انوائس تفصیلات: پروڈکٹس، مقدار، ریٹ، رعایت)
          ========================================================================= */}
       {selectedInvoiceForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-5 my-8">
-            <div className="flex justify-between items-start border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex justify-between items-start border-b pb-3 shrink-0">
               <div>
                 <div className="flex items-center space-x-2">
                   <FileText className="w-6 h-6 text-emerald-600" />
@@ -1994,8 +1994,10 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {/* Customer & Cashier Header */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border text-xs">
+            {/* Scrollable Modal Content */}
+            <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
+              {/* Customer & Cashier Header */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border text-xs">
               <div>
                 <span className="text-slate-400 block font-semibold text-[10px] uppercase">Customer (گاہک)</span>
                 <span className="font-bold text-slate-900">{selectedInvoiceForModal.customerName || "Walk-in"}</span>
@@ -2091,9 +2093,10 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
+            </div>
 
             {/* Return Action if not already refunded */}
-            <div className="flex justify-between items-center pt-2 border-t">
+            <div className="flex justify-between items-center pt-2 border-t shrink-0">
               <div>
                 {selectedInvoiceForModal.status !== "REFUNDED" ? (
                   <button
@@ -2128,9 +2131,9 @@ export default function ReportsPage() {
           2. SALES RETURN CONFIRMATION MODAL (سیل واپسی، اسٹاک ری اسٹور اور کھاتہ ایڈجسٹمنٹ)
          ========================================================================= */}
       {returnInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center space-x-3 text-rose-600 border-b pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 sm:p-6 space-y-4 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
+            <div className="flex items-center space-x-3 text-rose-600 border-b pb-3 shrink-0">
               <div className="p-2 bg-rose-100 rounded-xl">
                 <AlertCircle className="w-6 h-6 text-rose-600" />
               </div>
@@ -2144,7 +2147,7 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-xs flex-1 min-h-0 overflow-y-auto pr-1">
               <p className="text-slate-600">
                 Are you sure you want to process a return for this sale?
               </p>
@@ -2233,10 +2236,10 @@ export default function ReportsPage() {
              (کسٹمر نے آج تک کتنا مال خریدا، کس تاریخ کو کیا چیز لی، کتنے ادا کیے اور کتنے بقایا ہیں)
          ========================================================================= */}
       {customerStatementData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 sm:p-8 space-y-6 my-8 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-4 sm:p-8 space-y-5 my-auto max-h-[calc(100vh-2rem)] flex flex-col">
             {/* Modal Actions & Header */}
-            <div className="flex justify-between items-start border-b pb-4">
+            <div className="flex justify-between items-start border-b pb-4 shrink-0">
               <div>
                 <div className="flex items-center space-x-2">
                   <Users className="w-6 h-6 text-amber-600" />
@@ -2267,7 +2270,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Customer Details & Balance KPI Summary */}
-            <div id="customer-report-printable-area" className="space-y-6">
+            <div id="customer-report-printable-area" className="space-y-6 flex-1 min-h-0 overflow-y-auto pr-1">
               {/* Store & Customer Top Banner */}
               <div className="border border-slate-200 bg-slate-50 p-4 rounded-xl flex flex-col sm:flex-row justify-between gap-4">
                 <div>
