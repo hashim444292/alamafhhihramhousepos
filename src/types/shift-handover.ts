@@ -7,6 +7,12 @@ export interface ShiftHandoverData {
   handoverAcceptedAt?: string | null;
   handoverNotes?: string | null;
   cashierNotes?: string | null;
+  // Shortage / Misplaced Cash Settlement
+  shortageSettlementStatus?: "UNSETTLED" | "SETTLED";
+  shortageSettlementType?: "RECOVERED_FROM_CASHIER" | "ABSORBED_BY_STORE";
+  shortageSettledBy?: string | null;
+  shortageSettledAt?: string | null;
+  shortageSettlementNotes?: string | null;
 }
 
 export function parseShiftHandover(notes: string | null | undefined): ShiftHandoverData | null {
@@ -25,6 +31,11 @@ export function parseShiftHandover(notes: string | null | undefined): ShiftHando
           handoverAcceptedAt: parsed.handoverAcceptedAt || null,
           handoverNotes: parsed.handoverNotes || null,
           cashierNotes: parsed.cashierNotes || "",
+          shortageSettlementStatus: parsed.shortageSettlementStatus || undefined,
+          shortageSettlementType: parsed.shortageSettlementType || undefined,
+          shortageSettledBy: parsed.shortageSettledBy || null,
+          shortageSettledAt: parsed.shortageSettledAt || null,
+          shortageSettlementNotes: parsed.shortageSettlementNotes || null,
         };
       }
     }

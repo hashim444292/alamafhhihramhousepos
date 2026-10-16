@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { ThermalReceipt } from "@/components/pos/ThermalReceipt";
 import { formatCurrency, formatNumber } from "@/lib/format-utils";
+import { parseStockLossNotes } from "@/types/stock-loss";
 import { useAuthStore } from "@/store/auth-store";
 
 export default function ReportsPage() {
@@ -1618,9 +1619,32 @@ export default function ReportsPage() {
                               : "text-amber-700"
                           }`}
                         >
-                          {sh.cashDifference !== null && sh.cashDifference !== undefined
-                            ? (sh.cashDifference > 0 ? `+${formatCurrency(sh.cashDifference)}` : formatCurrency(sh.cashDifference))
-                            : "-"}
+                          {sh.cashDifference !== null && sh.cashDifference !== undefined ? (
+                            <div>
+                              <div>
+                                {sh.cashDifference > 0 ? `+${formatCurrency(sh.cashDifference)}` : formatCurrency(sh.cashDifference)}
+                              </div>
+                              {sh.cashDifference < 0 && (
+                                <div className="mt-0.5">
+                                  {sh.shortageSettlement?.isSettled ? (
+                                    <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                      sh.shortageSettlement.type === "RECOVERED_FROM_CASHIER"
+                                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                        : "bg-slate-100 text-slate-800 border border-slate-200"
+                                    }`}>
+                                      {sh.shortageSettlement.type === "RECOVERED_FROM_CASHIER" ? "کیشیئر سے وصول" : "دکان کا نقصان"}
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                      تصفیہ طلب
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            "-"
+                          )}
                         </td>
                         <td className="py-2.5 px-3 text-right font-bold text-indigo-900">
                           {sh.handover ? formatCurrency(sh.handover.handoverAmount) : "-"}
@@ -1901,9 +1925,36 @@ export default function ReportsPage() {
                                 </div>
                               </td>
                               <td className="py-3 px-3 text-slate-700 max-w-xs">
-                                <span className="text-xs bg-slate-50 px-2 py-1 rounded-md border border-slate-100 block">
-                                  {m.notes || "کوئی ریمارکس درج نہیں"}
-                                </span>
+                                {(() => {
+                                  const lossData = parseStockLossNotes(m.notes);
+                                  return (
+                                    <div className="space-y-1">
+                                      <div className="text-xs bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                        {lossData.reason || "کوئی ریمارکس درج نہیں"}
+                                      </div>
+                                      <div>
+                                        {lossData.settlementStatus === "SETTLED" ? (
+                                          <span
+                                            className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                                              lossData.settlementType === "RECOVERED_FROM_STAFF"
+                                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                                : "bg-slate-100 text-slate-800 border border-slate-200"
+                                            }`}
+                                          >
+                                            {lossData.settlementType === "RECOVERED_FROM_STAFF"
+                                              ? "✅ عملے / مینیجر سے وصول"
+                                              : "🏢 دکان کا نقصان"}
+                                            {lossData.settledBy ? ` (${lossData.settledBy})` : ""}
+                                          </span>
+                                        ) : (
+                                          <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                                            ⚠️ غیر تصفیہ شدہ
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </td>
                             </tr>
                           );

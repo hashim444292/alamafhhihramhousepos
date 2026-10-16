@@ -56,15 +56,43 @@ export class ShiftService {
     let shortageCount = 0;
     let totalShortageAmount = 0;
     let pendingHandoversCount = 0;
+    let unsettledShortagesCount = 0;
+    let unsettledShortagesAmount = 0;
+    let settledShortagesCount = 0;
+    let settledShortagesAmount = 0;
 
     const mappedShifts = shifts.map((s) => {
       const handover = parseShiftHandover(s.notes);
       if (handover?.handoverStatus === "PENDING" && (s.cashier?.role === "CASHIER" || !s.cashier?.role)) {
         pendingHandoversCount++;
       }
+      const isShortage = s.cashDifference !== null && s.cashDifference !== undefined && s.cashDifference < 0;
+      const shortageAmt = isShortage ? Math.abs(s.cashDifference!) : 0;
+      const isSettled = handover?.shortageSettlementStatus === "SETTLED";
+
+      if (isShortage) {
+        if (isSettled) {
+          settledShortagesCount++;
+          settledShortagesAmount += shortageAmt;
+        } else {
+          unsettledShortagesCount++;
+          unsettledShortagesAmount += shortageAmt;
+        }
+      }
+
       return {
         ...s,
         handover,
+        shortageSettlement: isShortage
+          ? {
+              isSettled,
+              status: isSettled ? "SETTLED" : "UNSETTLED",
+              type: handover?.shortageSettlementType,
+              settledBy: handover?.shortageSettledBy,
+              settledAt: handover?.shortageSettledAt,
+              notes: handover?.shortageSettlementNotes,
+            }
+          : null,
       };
     });
 
@@ -103,6 +131,10 @@ export class ShiftService {
         totalDifference,
         shortageCount,
         totalShortageAmount,
+        unsettledShortagesCount,
+        unsettledShortagesAmount,
+        settledShortagesCount,
+        settledShortagesAmount,
       },
     };
   }
@@ -374,6 +406,11 @@ export class ShiftService {
           cashierNotes: input.notes || "",
         };
 
+    // If there is a cash shortage, mark it as UNSETTLED for manager/admin settlement
+    if (cashDifference < 0) {
+      handoverPayload.shortageSettlementStatus = "UNSETTLED";
+    }
+
     const closedShift = await db.shift.update({
       where: { id: input.shiftId },
       data: {
@@ -399,6 +436,58 @@ export class ShiftService {
         mobileSales,
         cashExpenses: totalCashExpenses,
         handover: handoverPayload,
+      },
+    };
+  }
+
+  static async settleShortage(
+    shiftId: string,
+    input: {
+      settlementType: "RECOVERED_FROM_CASHIER" | "ABSORBED_BY_STORE";
+      notes?: string;
+    },
+    manager: { id: string; fullName: string; role: string }
+  ) {
+    const shift = await db.shift.findUnique({
+      where: { id: shiftId },
+      include: { cashier: { select: { fullName: true, username: true } } },
+    });
+    if (!shift) {
+      throw new Error("Shift not found");
+    }
+
+    const existingHandover = parseShiftHandover(shift.notes) || {
+      handoverAmount: shift.closingCash || 0,
+      handoverStatus: "ACCEPTED",
+    };
+
+    const updatedHandover: ShiftHandoverData = {
+      ...existingHandover,
+      shortageSettlementStatus: "SETTLED",
+      shortageSettlementType: input.settlementType,
+      shortageSettledBy: manager.fullName,
+      shortageSettledAt: new Date().toISOString(),
+      shortageSettlementNotes:
+        input.notes?.trim() ||
+        (input.settlementType === "RECOVERED_FROM_CASHIER"
+          ? "کیشیئر سے شارٹیج کی رقم وصول / کٹوتی کر لی گئی ہے۔ (Recovered from Cashier)"
+          : "مالک / دکان نے شارٹیج کا نقصان خود برداشت کر لیا۔ (Store Loss Absorbed by Shop)"),
+    };
+
+    const updatedShift = await db.shift.update({
+      where: { id: shiftId },
+      data: {
+        notes: formatShiftHandoverNotes(updatedHandover),
+      },
+      include: {
+        cashier: { select: { fullName: true, username: true } },
+      },
+    });
+
+    return {
+      shift: {
+        ...updatedShift,
+        handover: updatedHandover,
       },
     };
   }

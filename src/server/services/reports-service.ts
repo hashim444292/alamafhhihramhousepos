@@ -1,4 +1,6 @@
 import db from "@/lib/db";
+import { parseShiftHandover } from "@/types/shift-handover";
+import { parseStockLossNotes } from "@/types/stock-loss";
 
 export class ReportsService {
   static async getDashboardMetrics() {
@@ -77,6 +79,7 @@ export class ReportsService {
     const lowStockCount = allProducts.filter((p) => p.stockQuantity <= p.minStockThreshold).length;
 
     // 6. Recent sales transactions
+    // 6. Recent sales transactions
     const recentSales = await db.salesTransaction.findMany({
       take: 8,
       orderBy: { createdAt: "desc" },
@@ -85,6 +88,89 @@ export class ReportsService {
         items: true,
       },
     });
+
+    // 7. Cash Drawer Shortages & Settlements Audit
+    const shortageShifts = await db.shift.findMany({
+      where: {
+        cashDifference: { lt: 0 },
+      },
+      take: 25,
+      orderBy: { closedAt: "desc" },
+      include: {
+        cashier: { select: { id: true, fullName: true, username: true } },
+      },
+    });
+
+    const mappedShortages = shortageShifts.map((sh) => {
+      const handover = parseShiftHandover(sh.notes);
+      const isSettled = handover?.shortageSettlementStatus === "SETTLED";
+      const shortageAmount = Math.abs(sh.cashDifference || 0);
+
+      return {
+        id: sh.id,
+        shiftNumber: sh.shiftNumber,
+        cashierId: sh.cashierId,
+        cashierName: sh.cashier?.fullName || sh.cashier?.username || "Cashier",
+        shortageAmount,
+        systemExpectedCash: sh.systemExpectedCash,
+        closingCash: sh.closingCash,
+        closedAt: sh.closedAt,
+        isSettled,
+        settlementStatus: isSettled ? ("SETTLED" as const) : ("UNSETTLED" as const),
+        settlementType: handover?.shortageSettlementType,
+        settledBy: handover?.shortageSettledBy,
+        settledAt: handover?.shortageSettledAt,
+        settlementNotes: handover?.shortageSettlementNotes,
+        cashierNotes: handover?.cashierNotes,
+      };
+    });
+
+    const unsettledShortages = mappedShortages.filter((s) => !s.isSettled);
+    const totalUnsettledShortage = Math.round(unsettledShortages.reduce((acc, s) => acc + s.shortageAmount, 0) * 100) / 100;
+
+    // 8. Damaged & Stolen Inventory Losses & Settlements Audit
+    const lossMovements = await db.stockMovement.findMany({
+      where: {
+        movementType: { in: ["STOCK_OUT_DAMAGE", "STOCK_OUT_STOLEN"] },
+      },
+      take: 30,
+      orderBy: { createdAt: "desc" },
+      include: {
+        product: true,
+        performedBy: { select: { id: true, fullName: true, username: true } },
+      },
+    });
+
+    const mappedLosses = lossMovements.map((m) => {
+      const lossData = parseStockLossNotes(m.notes);
+      const isSettled = lossData.settlementStatus === "SETTLED";
+      const quantityLost = Math.abs(m.quantity);
+      const unitCost = m.product.purchasePrice || m.product.sellingPrice || 0;
+      const totalLossValue = Math.round(quantityLost * unitCost * 100) / 100;
+
+      return {
+        id: m.id,
+        movementType: m.movementType,
+        productId: m.productId,
+        productName: m.product.name,
+        productSku: m.product.sku,
+        quantity: quantityLost,
+        unitCost,
+        totalLossValue,
+        performedBy: m.performedBy?.fullName || m.performedBy?.username || "Staff",
+        reportedAt: m.createdAt,
+        reason: lossData.reason,
+        isSettled,
+        settlementStatus: isSettled ? ("SETTLED" as const) : ("UNSETTLED" as const),
+        settlementType: lossData.settlementType,
+        settledBy: lossData.settledBy,
+        settledAt: lossData.settledAt,
+        settlementNotes: lossData.settlementNotes,
+      };
+    });
+
+    const unsettledLosses = mappedLosses.filter((l) => !l.isSettled);
+    const totalUnsettledLossValue = Math.round(unsettledLosses.reduce((acc, l) => acc + l.totalLossValue, 0) * 100) / 100;
 
     return {
       today: {
@@ -104,6 +190,16 @@ export class ReportsService {
       },
       lowStockCount,
       recentSales,
+      shortageMetrics: {
+        totalUnsettledAmount: totalUnsettledShortage,
+        unsettledCount: unsettledShortages.length,
+        shortages: mappedShortages,
+      },
+      inventoryLossMetrics: {
+        totalUnsettledValue: totalUnsettledLossValue,
+        unsettledCount: unsettledLosses.length,
+        losses: mappedLosses,
+      },
     };
   }
 }

@@ -1,5 +1,10 @@
 import db from "@/lib/db";
 import { StockAdjustmentInput } from "@/lib/validations/product";
+import {
+  StockLossSettlementData,
+  parseStockLossNotes,
+  formatStockLossNotes,
+} from "@/types/stock-loss";
 
 export class InventoryService {
   static async adjustStock(input: StockAdjustmentInput, userId: string) {
@@ -14,6 +19,7 @@ export class InventoryService {
 
       const previousStock = product.stockQuantity;
       const isOutward = ["STOCK_OUT_DAMAGE", "STOCK_OUT_STOLEN", "STOCK_OUT_SALE", "STOCK_OUT_RETURN"].includes(input.movementType);
+      const isLoss = input.movementType === "STOCK_OUT_DAMAGE" || input.movementType === "STOCK_OUT_STOLEN";
       const effectiveQty = isOutward ? -Math.abs(input.quantity) : input.quantity;
       const newStock = previousStock + effectiveQty;
 
@@ -34,6 +40,15 @@ export class InventoryService {
           ? "STOLEN"
           : "MANUAL";
 
+      let movementNotes = input.notes || (isOutward ? "Reported loss / stock deduction" : "Manual stock adjustment");
+      if (isLoss) {
+        const lossPayload: StockLossSettlementData = {
+          reason: input.notes?.trim() || (input.movementType === "STOCK_OUT_DAMAGE" ? "Damaged / Broken item reported" : "Stolen / Lost item reported"),
+          settlementStatus: "UNSETTLED",
+        };
+        movementNotes = formatStockLossNotes(lossPayload);
+      }
+
       // Record movement
       const movement = await tx.stockMovement.create({
         data: {
@@ -43,7 +58,7 @@ export class InventoryService {
           previousStock,
           newStock,
           referenceType,
-          notes: input.notes || (isOutward ? "Reported loss / stock deduction" : "Manual stock adjustment"),
+          notes: movementNotes,
           performedById: userId,
         },
         include: {
@@ -119,5 +134,64 @@ export class InventoryService {
     });
 
     return products.filter((p) => p.stockQuantity <= p.minStockThreshold);
+  }
+
+  static async settleLoss(
+    movementId: string,
+    input: {
+      settlementType: "RECOVERED_FROM_STAFF" | "ABSORBED_BY_STORE";
+      notes?: string;
+    },
+    manager: { id: string; fullName: string; role: string }
+  ) {
+    const movement = await db.stockMovement.findUnique({
+      where: { id: movementId },
+      include: {
+        product: true,
+        performedBy: { select: { id: true, fullName: true, username: true } },
+      },
+    });
+
+    if (!movement) {
+      throw new Error("Stock movement record not found");
+    }
+
+    if (movement.movementType !== "STOCK_OUT_DAMAGE" && movement.movementType !== "STOCK_OUT_STOLEN") {
+      throw new Error("Only Damaged and Stolen stock movements can be settled as inventory loss");
+    }
+
+    const existingLossData = parseStockLossNotes(movement.notes);
+
+    const updatedLossData: StockLossSettlementData = {
+      ...existingLossData,
+      settlementStatus: "SETTLED",
+      settlementType: input.settlementType,
+      settledBy: manager.fullName,
+      settledAt: new Date().toISOString(),
+      settlementNotes:
+        input.notes?.trim() ||
+        (input.settlementType === "RECOVERED_FROM_STAFF"
+          ? "شاپ مینیجر / عملے سے نقصان کی رقم وصول / ایڈجسٹ کر لی گئی۔ (Recovered from Shop Staff)"
+          : "دکان / مالک نے کاروباری نقصان کے طور پر تسلیم کر لیا۔ (Store Loss Absorbed by Shop)"),
+    };
+
+    const updatedMovement = await db.stockMovement.update({
+      where: { id: movementId },
+      data: {
+        notes: formatStockLossNotes(updatedLossData),
+      },
+      include: {
+        product: true,
+        performedBy: { select: { id: true, fullName: true, username: true } },
+      },
+    });
+
+    return {
+      success: true,
+      movement: {
+        ...updatedMovement,
+        lossData: updatedLossData,
+      },
+    };
   }
 }
