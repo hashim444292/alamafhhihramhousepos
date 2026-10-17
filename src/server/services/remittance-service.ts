@@ -71,45 +71,157 @@ export class RemittanceService {
    * - Cash paid out for shop petty expenses
    * - Cash already remitted/transferred to owner
    */
+  /**
+   * Calculates the Store Manager's actual physical Cash in Hand:
+   * = Cash received from Cashier shift handovers (Accepted)
+   * + Cash from Manager/Admin's own sales & drawer (Closed shifts + Open shift sales/float)
+   * + Customer Khata Receivables (Udhaar recovery) collected in Cash
+   * - Shop cash expenses paid by Manager/Admin from store cash
+   * - Cash remitted to Owner (Confirmed + Pending transfers)
+   */
   static async getManagerCashBalance() {
     await ensureRemittancesTable();
 
-    const [closedShifts, cashExpenses, remittances] = await Promise.all([
+    const [
+      closedShifts,
+      openManagerShifts,
+      unshiftedManagerSales,
+      cashExpenses,
+      remittances,
+      customerPayments,
+    ] = await Promise.all([
       db.shift.findMany({
         where: { status: "CLOSED" },
-        select: { closingCash: true, notes: true, cashier: { select: { role: true } } },
+        select: {
+          id: true,
+          shiftNumber: true,
+          openingCash: true,
+          closingCash: true,
+          notes: true,
+          cashier: { select: { id: true, fullName: true, username: true, role: true } },
+        },
+      }),
+      db.shift.findMany({
+        where: {
+          status: "OPEN",
+          cashier: { role: { in: ["MANAGER", "ADMIN"] } },
+        },
+        select: {
+          id: true,
+          shiftNumber: true,
+          openingCash: true,
+          cashier: { select: { id: true, fullName: true, username: true, role: true } },
+          sales: {
+            where: { status: "COMPLETED" },
+            select: { paymentMethod: true, totalAmount: true, balanceDue: true },
+          },
+        },
+      }),
+      db.salesTransaction.findMany({
+        where: {
+          shiftId: null,
+          status: "COMPLETED",
+          paymentMethod: "CASH",
+          cashier: { role: { in: ["MANAGER", "ADMIN"] } },
+        },
+        select: { totalAmount: true, balanceDue: true },
       }),
       db.expense.findMany({
         where: { paymentMethod: "CASH" },
-        select: { amount: true },
+        select: {
+          id: true,
+          amount: true,
+          recordedById: true,
+          recordedBy: { select: { id: true, fullName: true, username: true, role: true } },
+        },
       }),
       (db as any).managerRemittance.findMany({
         orderBy: { remittedAt: "desc" },
       }),
+      db.customerLedgerEntry.findMany({
+        where: {
+          referenceType: "PAYMENT_RECEIVED",
+          credit: { gt: 0 },
+        },
+        select: {
+          id: true,
+          credit: true,
+          notes: true,
+          createdAt: true,
+        },
+      }),
     ]);
 
-    // 1. Total cash collected from cashiers
-    let totalCashCollected = 0;
+    // 1. Total Cash Collected from Cashiers (Accepted Handovers)
+    let totalCashierHandovers = 0;
+    let totalManagerClosedShiftCash = 0;
+
     for (const s of closedShifts) {
+      const isPrivileged = s.cashier?.role === "MANAGER" || s.cashier?.role === "ADMIN";
       const handover = parseShiftHandover(s.notes);
-      // If handover was accepted by manager, count receivedAmount or handoverAmount
-      if (handover && handover.handoverStatus === "ACCEPTED") {
-        const amt = typeof (handover as any).receivedAmount === "number"
-          ? (handover as any).receivedAmount
-          : handover.handoverAmount;
-        totalCashCollected += amt;
-      } else if (!handover && s.closingCash) {
-        totalCashCollected += s.closingCash;
+
+      if (isPrivileged) {
+        // Manager's own closed shift
+        const amt = handover && typeof handover.receivedAmount === "number"
+          ? handover.receivedAmount
+          : (handover?.handoverAmount ?? s.closingCash ?? 0);
+        totalManagerClosedShiftCash += amt;
+      } else {
+        // Cashier shift handover accepted by manager
+        if (handover && handover.handoverStatus === "ACCEPTED") {
+          const amt = typeof (handover as any).receivedAmount === "number"
+            ? (handover as any).receivedAmount
+            : handover.handoverAmount;
+          totalCashierHandovers += amt;
+        } else if (!handover && s.closingCash) {
+          totalCashierHandovers += s.closingCash;
+        }
       }
     }
 
-    // 2. Total cash expenses paid by shop manager
-    let totalCashExpenses = 0;
-    for (const exp of cashExpenses) {
-      totalCashExpenses += exp.amount;
+    // 2. Manager's Direct Sales & Active/Open Shifts
+    let totalManagerOpenShiftCash = 0;
+    for (const s of openManagerShifts) {
+      const opening = s.openingCash || 0;
+      const cashSales = s.sales
+        .filter((sl) => sl.paymentMethod === "CASH")
+        .reduce((sum, sl) => sum + Math.max(0, sl.totalAmount - (sl.balanceDue || 0)), 0);
+      totalManagerOpenShiftCash += (opening + cashSales);
     }
 
-    // 3. Total cash remitted to Owner
+    const totalUnshiftedManagerSales = unshiftedManagerSales.reduce(
+      (sum, s) => sum + Math.max(0, s.totalAmount - (s.balanceDue || 0)),
+      0
+    );
+
+    let totalManagerDirectSales = totalManagerClosedShiftCash + totalManagerOpenShiftCash + totalUnshiftedManagerSales;
+
+    // 3. Customer Khata Receivables (Udhaar recovery) collected in Cash
+    let totalCustomerReceivables = 0;
+    for (const p of customerPayments) {
+      const notesUpper = (p.notes || "").toUpperCase();
+      const isNonCash =
+        notesUpper.includes("CARD") ||
+        notesUpper.includes("ONLINE") ||
+        notesUpper.includes("BANK") ||
+        notesUpper.includes("CHEQUE");
+      if (!isNonCash) {
+        totalCustomerReceivables += p.credit;
+      }
+    }
+
+    // 4. Shop Cash Expenses
+    let totalCashExpenses = 0;
+    let managerCashExpenses = 0;
+    for (const exp of cashExpenses) {
+      totalCashExpenses += exp.amount;
+      // Expenses paid out of store cash in manager custody (Manager/Admin or general store expenses)
+      if (exp.recordedBy?.role === "MANAGER" || exp.recordedBy?.role === "ADMIN" || !exp.recordedBy?.role) {
+        managerCashExpenses += exp.amount;
+      }
+    }
+
+    // 5. Remittances to Owner
     let totalCashRemitted = 0;
     let pendingRemittancesCount = 0;
     let pendingRemittancesAmount = 0;
@@ -123,22 +235,46 @@ export class RemittanceService {
       }
     }
 
-    totalCashCollected = Math.round(totalCashCollected * 100) / 100;
+    // Financial rounding
+    totalCashierHandovers = Math.round(totalCashierHandovers * 100) / 100;
+    totalManagerDirectSales = Math.round(totalManagerDirectSales * 100) / 100;
+    totalCustomerReceivables = Math.round(totalCustomerReceivables * 100) / 100;
     totalCashExpenses = Math.round(totalCashExpenses * 100) / 100;
+    managerCashExpenses = Math.round(managerCashExpenses * 100) / 100;
     totalCashRemitted = Math.round(totalCashRemitted * 100) / 100;
     pendingRemittancesAmount = Math.round(pendingRemittancesAmount * 100) / 100;
 
-    // Remaining cash in shop manager's custody
-    const currentCashInHand = Math.round((totalCashCollected - totalCashExpenses - totalCashRemitted) * 100) / 100;
+    // Total Cash Inflow into Manager's hands
+    const totalCashCollected = Math.round(
+      (totalCashierHandovers + totalManagerDirectSales + totalCustomerReceivables) * 100
+    ) / 100;
+
+    // Current Cash in Hand = Inflows - Manager Cash Expenses - Remittances (Confirmed + Pending)
+    const currentCashInHand = Math.max(
+      0,
+      Math.round(
+        (totalCashCollected - managerCashExpenses - totalCashRemitted - pendingRemittancesAmount) * 100
+      ) / 100
+    );
 
     return {
       totalCashCollected,
       totalCashExpenses,
+      managerCashExpenses,
       totalCashRemitted,
       currentCashInHand,
       pendingRemittancesCount,
       pendingRemittancesAmount,
       totalRemittancesCount: remittances.length,
+      breakdown: {
+        cashierHandoversReceived: totalCashierHandovers,
+        managerDirectSales: totalManagerDirectSales,
+        customerReceivablesCollected: totalCustomerReceivables,
+        shopCashExpenses: totalCashExpenses,
+        managerExpensesDeducted: managerCashExpenses,
+        remittedToOwner: totalCashRemitted,
+        pendingOwnerConfirm: pendingRemittancesAmount,
+      },
     };
   }
 
@@ -197,13 +333,13 @@ export class RemittanceService {
         remittanceNumber,
         amount: Math.round(input.amount * 100) / 100,
         paymentMethod: input.paymentMethod || "CASH",
-        status: isDirectConfirm ? "CONFIRMED" : "CONFIRMED", // Default CONFIRMED so balance reflects immediately, or PENDING if verification is requested
+        status: isDirectConfirm ? "CONFIRMED" : "PENDING",
         managerId: manager.id,
         managerName: manager.fullName,
         ownerId: input.ownerId || null,
         ownerName: input.ownerName || "Owner / Admin",
         remittedAt: input.remittedAt ? new Date(input.remittedAt) : new Date(),
-        confirmedAt: new Date(),
+        confirmedAt: isDirectConfirm ? new Date() : null,
         notes: input.notes?.trim() || "مینیجر نے دکان کی نقدی مالک کو جمع کروا دی۔",
       },
     });

@@ -730,7 +730,7 @@ export default function DashboardPage() {
               Rs. {formatNumber(remittanceData?.balance?.currentCashInHand || 0)}
             </div>
             <span className="text-[10px] text-indigo-300 mt-1 block">
-              شاپ دراز سے وصول منہا اخراجات و ادائیگیاں
+              کیشیئرز + مینیجر سیلز + ادھار وصولی منہا اخراجات
             </span>
           </div>
 
@@ -772,6 +772,30 @@ export default function DashboardPage() {
             </span>
           </div>
         </div>
+
+        {/* Live Cash Flow Breakdown Bar */}
+        {remittanceData?.balance?.breakdown && (
+          <div className="pt-3 border-t border-indigo-900/60 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-indigo-300 font-bold text-[11px]">حساب کی شفاف تفصیل (Cash Audit):</span>
+            <span className="bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
+              کیشیئرز سے وصولی: Rs. {formatNumber(remittanceData.balance.breakdown.cashierHandoversReceived)}
+            </span>
+            <span className="bg-blue-950/60 border border-blue-500/30 text-blue-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
+              مینیجر سیلز و دراز: Rs. {formatNumber(remittanceData.balance.breakdown.managerDirectSales)}
+            </span>
+            <span className="bg-purple-950/60 border border-purple-500/30 text-purple-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
+              ادھار کھاتہ کیش وصولی: Rs. {formatNumber(remittanceData.balance.breakdown.customerReceivablesCollected)}
+            </span>
+            <span className="bg-rose-950/60 border border-rose-500/30 text-rose-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
+              دکان اخراجات: -Rs. {formatNumber(remittanceData.balance.breakdown.managerExpensesDeducted)}
+            </span>
+            {(remittanceData.balance.breakdown.remittedToOwner + remittanceData.balance.breakdown.pendingOwnerConfirm) > 0 && (
+              <span className="bg-amber-950/60 border border-amber-500/30 text-amber-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold">
+                مالک کو ادائیگی: -Rs. {formatNumber(remittanceData.balance.breakdown.remittedToOwner + remittanceData.balance.breakdown.pendingOwnerConfirm)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Due Date & Overdue Reminders Notification Center (وینڈرز کو ادائیگی اور گاہکوں سے وصولی) */}

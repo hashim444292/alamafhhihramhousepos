@@ -2073,7 +2073,7 @@ export default function ReportsPage() {
                     Rs. {formatNumber(balance.totalCashCollected)}
                   </div>
                   <span className="text-[10px] text-slate-500 mt-0.5 block">
-                    کیشیئرز کے منظور شدہ شفٹ ہینڈ اوورز
+                    کیشیئرز + مینیجر سیلز + ادھار وصولی
                   </span>
                 </div>
 
@@ -2113,6 +2113,30 @@ export default function ReportsPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Live Cash Flow Breakdown Bar */}
+              {(balance as any).breakdown && (
+                <div className="bg-indigo-950 text-white p-3.5 rounded-xl border border-indigo-800 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-indigo-200 font-bold text-[11px]">حساب کی شفاف تفصیل (Cash Audit):</span>
+                  <span className="bg-white/10 text-emerald-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-emerald-500/30">
+                    کیشیئرز سے وصولی: Rs. {formatNumber((balance as any).breakdown.cashierHandoversReceived)}
+                  </span>
+                  <span className="bg-white/10 text-blue-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-blue-500/30">
+                    مینیجر سیلز و دراز: Rs. {formatNumber((balance as any).breakdown.managerDirectSales)}
+                  </span>
+                  <span className="bg-white/10 text-purple-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-purple-500/30">
+                    ادھار کھاتہ کیش وصولی: Rs. {formatNumber((balance as any).breakdown.customerReceivablesCollected)}
+                  </span>
+                  <span className="bg-white/10 text-rose-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-rose-500/30">
+                    دکان اخراجات: -Rs. {formatNumber((balance as any).breakdown.managerExpensesDeducted)}
+                  </span>
+                  {((balance as any).breakdown.remittedToOwner + (balance as any).breakdown.pendingOwnerConfirm) > 0 && (
+                    <span className="bg-white/10 text-amber-300 px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-amber-500/30">
+                      مالک کو ادائیگی: -Rs. {formatNumber((balance as any).breakdown.remittedToOwner + (balance as any).breakdown.pendingOwnerConfirm)}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Remittance Ledger Table */}
               <div className="border rounded-2xl overflow-hidden shadow-xs bg-white">
