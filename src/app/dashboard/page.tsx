@@ -80,6 +80,11 @@ export default function DashboardPage() {
   const [settlementRegisterTab, setSettlementRegisterTab] = useState<"SHORTAGES" | "LOSSES" | "REMITTANCES">("SHORTAGES");
 
   const fetchPendingHandovers = async () => {
+    // Cashier handover approval queue is strictly for Store Managers (NOT Admin/Owner)
+    if (user?.role !== "MANAGER") {
+      setPendingHandovers([]);
+      return;
+    }
     try {
       const res = await fetch("/api/pos/shifts/handover");
       if (res.ok) {
@@ -89,7 +94,7 @@ export default function DashboardPage() {
         }
       }
     } catch (e) {
-      // safe fallback if not manager/admin
+      // safe fallback
     }
   };
 
@@ -315,6 +320,10 @@ export default function DashboardPage() {
     fetchRemittances();
   }, []);
 
+  useEffect(() => {
+    fetchPendingHandovers();
+  }, [user?.role]);
+
   const filteredSales = salesList.filter((s) => {
     if (paymentFilter === "ALL") return true;
     return s.paymentMethod === paymentFilter;
@@ -333,8 +342,8 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Manager Cash Handover Acceptance Queue Widget */}
-      {pendingHandovers.length > 0 && (
+      {/* Manager Cash Handover Acceptance Queue Widget - Strictly for Store Manager (NOT Admin/Owner) */}
+      {user?.role === "MANAGER" && pendingHandovers.length > 0 && (
         <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 pb-3">
             <div className="flex items-center space-x-2.5">

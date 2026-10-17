@@ -1713,7 +1713,7 @@ export default function ReportsPage() {
                               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                                 PENDING
                               </span>
-                              {(user?.role === "ADMIN" || user?.role === "MANAGER") && (
+                              {user?.role === "MANAGER" ? (
                                 <button
                                   onClick={async () => {
                                     if (
@@ -1741,10 +1741,14 @@ export default function ReportsPage() {
                                       alert(err.message);
                                     }
                                   }}
-                                  className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow-xs whitespace-nowrap"
+                                  className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow-xs whitespace-nowrap cursor-pointer"
                                 >
                                   وصول پایا (Accept)
                                 </button>
+                              ) : (
+                                <span className="text-[10px] text-amber-700 font-semibold block mt-0.5">
+                                  مینیجر کی وصولی کے انتظار میں
+                                </span>
                               )}
                             </div>
                           ) : sh.handover?.handoverStatus === "ACCEPTED" ? (

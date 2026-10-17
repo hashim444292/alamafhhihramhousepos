@@ -205,11 +205,17 @@ export class ShiftService {
 
   static async acceptShiftHandover(
     shiftId: string,
-    manager: { id: string; fullName: string },
+    manager: { id: string; fullName: string; role?: string },
     action: "ACCEPT" | "REJECT" = "ACCEPT",
     managerNotes?: string,
     receivedAmount?: number
   ) {
+    if (manager.role && manager.role !== "MANAGER") {
+      throw new Error(
+        "کیشیئر سے کیش کی وصولی اور منظوری صرف اسٹور مینیجر (Store Manager) کا اختیار ہے۔ (Only Store Managers can collect and accept cashier handovers.)"
+      );
+    }
+
     const shift = await db.shift.findUnique({
       where: { id: shiftId },
       include: { cashier: { select: { fullName: true, username: true } } },

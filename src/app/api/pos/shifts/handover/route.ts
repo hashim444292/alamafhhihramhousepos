@@ -7,8 +7,12 @@ export async function GET(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorizedResponse();
 
-  if (user.role !== "ADMIN" && user.role !== "MANAGER") {
-    return forbiddenResponse("Only Managers and Admins can view pending shift handovers.");
+  // Cashier handover approval queue is strictly for Store Managers (NOT Admin/Owner)
+  if (user.role !== "MANAGER") {
+    return NextResponse.json({
+      success: true,
+      pendingHandovers: [],
+    });
   }
 
   try {
@@ -26,8 +30,11 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser(req);
   if (!user) return unauthorizedResponse();
 
-  if (user.role !== "ADMIN" && user.role !== "MANAGER") {
-    return forbiddenResponse("Only Managers and Admins can approve or accept cash handovers.");
+  // Cashier cash collection and approval is strictly restricted to Store Managers
+  if (user.role !== "MANAGER") {
+    return forbiddenResponse(
+      "کیشیئر سے کیش کی وصولی اور منظوری صرف اسٹور مینیجر (Store Manager) کے پاس ہے، ایڈمن یا اونر کے پاس نہیں۔ (Only Store Managers can collect and accept cash from Cashiers.)"
+    );
   }
 
   try {
@@ -42,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     const result = await ShiftService.acceptShiftHandover(
       parsed.data.shiftId,
-      { id: user.id, fullName: user.fullName },
+      { id: user.id, fullName: user.fullName, role: user.role },
       parsed.data.action,
       parsed.data.notes,
       parsed.data.receivedAmount
